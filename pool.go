@@ -4,11 +4,45 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"sync/atomic"
+	"time"
 )
 
 // Pool is a placeholder wrapper over *sql.DB based pool.
 type Pool struct {
 	db *sql.DB
+	// leak detection
+	borrowWarnNS int64        // threshold in ns; 0 means disabled
+	borrowed     int64        // current borrowed count
+	leakHandler  atomic.Value // func(BorrowLeak)
+}
+
+// SetBorrowWarnThreshold sets the warn threshold for held connections.
+func (p *Pool) SetBorrowWarnThreshold(d time.Duration) { atomic.StoreInt64(&p.borrowWarnNS, d.Nanoseconds()) }
+
+// SetLeakHandler registers a callback invoked when a borrow exceeds threshold.
+func (p *Pool) SetLeakHandler(h func(BorrowLeak)) { p.leakHandler.Store(h) }
+
+func (p *Pool) onBorrow(acqNS int64) {
+	atomic.AddInt64(&p.borrowed, 1)
+	thr := atomic.LoadInt64(&p.borrowWarnNS)
+	if thr <= 0 { return }
+	if h, _ := p.leakHandler.Load().(func(BorrowLeak)); h != nil {
+		// schedule async watchdog
+		go func(start int64) {
+			t := time.NewTimer(time.Duration(thr))
+			defer t.Stop()
+			<-t.C
+			// If still borrowed (best-effort), signal
+			if atomic.LoadInt64(&p.borrowed) > 0 {
+				h(BorrowLeak{HeldFor: time.Duration(time.Now().UnixNano() - start)})
+			}
+		}(acqNS)
+	}
+}
+
+func (p *Pool) onReturn() {
+	atomic.AddInt64(&p.borrowed, -1)
 }
 
 // NewPool creates a new Pool, opening a DB and applying basic pool settings.
