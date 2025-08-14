@@ -65,6 +65,8 @@ func NewPool(ctx context.Context, cfg Config) (*Pool, error) {
 		return nil, err
 	}
 	p := &Pool{db: db}
+	// Apply retry policy from config
+	p.retry = cfg.Retry
 	// Apply pool settings (placeholders)
 	if cfg.Pool.MaxOpen > 0 {
 		db.SetMaxOpenConns(cfg.Pool.MaxOpen)
