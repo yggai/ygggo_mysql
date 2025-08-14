@@ -3,7 +3,9 @@ package ygggo_mysql
 import (
 	"fmt"
 	"net/url"
+	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -32,6 +34,33 @@ type Config struct {
 	Retry              RetryPolicy
 	Telemetry          TelemetryConfig
 	SlowQueryThreshold time.Duration
+}
+
+// applyEnv overrides config with env vars (prefix YGGGO_MYSQL_*) when present.
+func applyEnv(c *Config) {
+	lookup := func(key string) (string, bool) { v, ok := os.LookupEnv(key); return v, ok }
+	if v, ok := lookup("YGGGO_MYSQL_DRIVER"); ok { c.Driver = v }
+	if v, ok := lookup("YGGGO_MYSQL_DSN"); ok { c.DSN = v }
+	if v, ok := lookup("YGGGO_MYSQL_HOST"); ok { c.Host = v }
+	if v, ok := lookup("YGGGO_MYSQL_PORT"); ok {
+		if p, err := strconv.Atoi(v); err == nil { c.Port = p }
+	}
+	if v, ok := lookup("YGGGO_MYSQL_USERNAME"); ok { c.Username = v }
+	if v, ok := lookup("YGGGO_MYSQL_PASSWORD"); ok { c.Password = v }
+	if v, ok := lookup("YGGGO_MYSQL_DATABASE"); ok { c.Database = v }
+	if v, ok := lookup("YGGGO_MYSQL_PARAMS"); ok {
+		// parse "k=v&k2=v2" into map
+		m := map[string]string{}
+		for _, pair := range strings.Split(v, "&") {
+			if pair == "" { continue }
+			kv := strings.SplitN(pair, "=", 2)
+			k := kv[0]
+			val := ""
+			if len(kv) == 2 { val = kv[1] }
+			m[k] = val
+		}
+		c.Params = m
+	}
 }
 
 // dsnFromConfig returns a DSN string.

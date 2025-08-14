@@ -13,6 +13,8 @@ type Pool struct {
 
 // NewPool creates a new Pool, opening a DB and applying basic pool settings.
 func NewPool(ctx context.Context, cfg Config) (*Pool, error) {
+	// Apply env overrides first (convention over configuration)
+	applyEnv(&cfg)
 	if cfg.Driver == "" {
 		cfg.Driver = "mysql"
 	}
