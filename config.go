@@ -12,6 +12,8 @@ type PoolConfig struct {
 
 // Config holds library configuration (placeholders).
 type Config struct {
+	// Driver allows overriding the sql driver (e.g., "mysql" in prod, "sqlmock" in tests).
+	Driver             string
 	DSN                string
 	Pool               PoolConfig
 	Retry              RetryPolicy
