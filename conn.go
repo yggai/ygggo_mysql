@@ -19,6 +19,8 @@ type Conn struct{
 	inner *sql.Conn
 	p     *Pool
 	acqNS int64 // monotonic acquisition time (ns)
+	// per-connection stmt cache (optional)
+	cache *stmtCache
 }
 
 // WithConn acquires a connection, calls fn, and always returns the connection.
@@ -27,6 +29,27 @@ func (p *Pool) WithConn(ctx context.Context, fn func(*Conn) error) error {
 	if err != nil { return err }
 	defer conn.Close()
 	return fn(conn)
+}
+
+// EnableStmtCache enables per-connection LRU stmt cache with the given capacity.
+func (c *Conn) EnableStmtCache(capacity int) { c.cache = newStmtCache(capacity) }
+
+// ExecCached executes using a cached prepared statement when enabled.
+func (c *Conn) ExecCached(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	if c == nil || c.inner == nil { return nil, sql.ErrConnDone }
+	if c.cache == nil { return c.Exec(ctx, query, args...) }
+	st, _, err := c.cache.getOrPrepare(ctx, c.inner, query)
+	if err != nil { return nil, err }
+	return st.ExecContext(ctx, args...)
+}
+
+// QueryCached runs a query using stmt cache when enabled.
+func (c *Conn) QueryCached(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	if c == nil || c.inner == nil { return nil, sql.ErrConnDone }
+	if c.cache == nil { return c.Query(ctx, query, args...) }
+	st, _, err := c.cache.getOrPrepare(ctx, c.inner, query)
+	if err != nil { return nil, err }
+	return st.QueryContext(ctx, args...)
 }
 
 // Acquire gets a connection from the underlying *sql.DB honoring context.
@@ -50,6 +73,7 @@ func (c *Conn) markAcquired() {
 func (c *Conn) Close() error {
 	if c == nil || c.inner == nil { return nil }
 	c.p.onReturn()
+	if c.cache != nil { c.cache.closeAll() }
 	return c.inner.Close()
 }
 
