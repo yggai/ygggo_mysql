@@ -1,12 +1,71 @@
 package ygggo_mysql
 
-import "context"
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"time"
+)
 
-// Tx represents a placeholder transaction.
-type Tx struct{}
-
-// WithinTx executes a function within a transaction (placeholder).
-func (p *Pool) WithinTx(ctx context.Context, fn func(*Tx) error, opts ...any) error {
-	return fn(&Tx{})
+// Tx wraps *sql.Tx and shares some methods with Conn.
+type Tx struct{
+	inner *sql.Tx
 }
 
+// Exec executes within the transaction.
+func (tx *Tx) Exec(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	if tx == nil || tx.inner == nil { return nil, sql.ErrTxDone }
+	return tx.inner.ExecContext(ctx, query, args...)
+}
+
+// WithinTx executes fn within a transaction with basic retry on deadlock.
+func (p *Pool) WithinTx(ctx context.Context, fn func(*Tx) error, opts ...any) error {
+	if p == nil || p.db == nil { return errors.New("nil pool") }
+	attempts := 1
+	if p.retry.MaxAttempts > 1 { attempts = p.retry.MaxAttempts }
+	var lastErr error
+	for i := 0; i < attempts; i++ {
+		tx, err := p.db.BeginTx(ctx, nil)
+		if err != nil { return err }
+		wrap := &Tx{inner: tx}
+		err = fn(wrap)
+		if err == nil {
+			if cerr := tx.Commit(); cerr != nil { return cerr }
+			return nil
+		}
+		_ = tx.Rollback()
+		if isRetryable(adapt(err)) {
+			lastErr = err
+			backoffSleep(p.retry, i+1)
+			continue
+		}
+		return err
+	}
+	return lastErr
+}
+
+func isRetryable(err error) bool {
+	var me *mysqlMySQLError // local shim to avoid importing mysql here
+	if errors.As(err, &me) {
+		switch me.Number {
+		case 1213, 1205, 1290:
+			return true
+		}
+	}
+	return false
+}
+
+// backoffSleep performs simple sleep; will be replaced by cenkalti/backoff later.
+func backoffSleep(pol RetryPolicy, attempt int) {
+	if attempt <= 0 { return }
+	d := pol.BaseBackoff
+	if d <= 0 { d = 10 * time.Millisecond }
+	sleep := time.Duration(attempt) * d
+	time.Sleep(sleep)
+}
+
+// minimal wrapper to decouple from concrete driver types in tx.go
+// concrete conversion is in errors.go
+type mysqlMySQLError struct{ Number uint16 }
+
+func (e *mysqlMySQLError) Error() string { return "mysql error" }

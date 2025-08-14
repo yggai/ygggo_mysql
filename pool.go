@@ -15,6 +15,8 @@ type Pool struct {
 	borrowWarnNS int64        // threshold in ns; 0 means disabled
 	borrowed     int64        // current borrowed count
 	leakHandler  atomic.Value // func(BorrowLeak)
+	// retry policy
+	retry RetryPolicy
 }
 
 // SetBorrowWarnThreshold sets the warn threshold for held connections.
@@ -104,3 +106,6 @@ func (p *Pool) Ping(ctx context.Context) error {
 func (p *Pool) SelfCheck(ctx context.Context) error {
 	return p.Ping(ctx)
 }
+
+// internal retry policy storage (temporary until full feature wired)
+func (p *Pool) setRetryPolicy(r RetryPolicy) { p.retry = r }
