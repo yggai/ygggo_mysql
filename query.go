@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"reflect"
 	"strings"
 )
 
@@ -101,4 +102,53 @@ func (c *Conn) InsertOnDuplicate(ctx context.Context, table string, columns []st
 		b.WriteString(")")
 	}
 	return c.Exec(ctx, b.String(), args...)
+}
+
+// NamedExec executes a query with :named parameters using values from struct or map.
+func (c *Conn) NamedExec(ctx context.Context, query string, arg any) (sql.Result, error) {
+	if c == nil || c.inner == nil { return nil, sql.ErrConnDone }
+	// slice of structs -> run once per item
+	v := reflect.ValueOf(arg)
+	if v.IsValid() && v.Kind() == reflect.Slice && v.Len() > 0 {
+		bound, names := parseNamed(query)
+		for i := 0; i < v.Len(); i++ {
+			m, err := structOrMapToMap(v.Index(i).Interface())
+			if err != nil { return nil, err }
+			args := valuesByNames(m, names)
+			if _, err := c.Exec(ctx, bound, args...); err != nil { return nil, err }
+		}
+		return dummyResult(0), nil
+	}
+	// single struct or map
+	bound, args, err := bindNamed(query, arg)
+	if err != nil { return nil, err }
+	return c.Exec(ctx, bound, args...)
+}
+
+// NamedQuery runs a select with :named parameters.
+func (c *Conn) NamedQuery(ctx context.Context, query string, arg any) (*sql.Rows, error) {
+	if c == nil || c.inner == nil { return nil, sql.ErrConnDone }
+	bound, args, err := bindNamed(query, arg)
+	if err != nil { return nil, err }
+	return c.Query(ctx, bound, args...)
+}
+
+// BuildIn expands a single placeholder to multiple (?, ?, ...) for a slice value.
+func BuildIn(query string, slice any, others ...any) (string, []any, error) {
+	v := reflect.ValueOf(slice)
+	if v.Kind() != reflect.Slice { return "", nil, fmt.Errorf("BuildIn requires slice as second arg") }
+	n := v.Len()
+	if n == 0 { return "", nil, fmt.Errorf("empty slice for IN") }
+	// replace first occurrence of "(?)" or first '?' with n placeholders
+	repl := "(" + strings.TrimRight(strings.Repeat("?,", n), ",") + ")"
+	bound := query
+	if strings.Contains(bound, "(?)") {
+		bound = strings.Replace(bound, "(?)", repl, 1)
+	} else {
+		bound = strings.Replace(bound, "?", strings.Trim(repl, "()"), 1)
+	}
+	args := make([]any, 0, n+len(others))
+	for i := 0; i < n; i++ { args = append(args, v.Index(i).Interface()) }
+	args = append(args, others...)
+	return bound, args, nil
 }
