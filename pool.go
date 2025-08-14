@@ -16,8 +16,13 @@ func NewPool(ctx context.Context, cfg Config) (*Pool, error) {
 	if cfg.Driver == "" {
 		cfg.Driver = "mysql"
 	}
+	// Build DSN from config (supports raw DSN or field-based build)
+	dsn, err := dsnFromConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
 	// Open DB
-	db, err := sql.Open(cfg.Driver, cfg.DSN)
+	db, err := sql.Open(cfg.Driver, dsn)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +40,7 @@ func NewPool(ctx context.Context, cfg Config) (*Pool, error) {
 	if cfg.Pool.ConnMaxIdleTime > 0 {
 		db.SetConnMaxIdleTime(cfg.Pool.ConnMaxIdleTime)
 	}
-	// Try ping to validate connectivity; ignore ctx for now (placeholder)
+	// Try ping to validate connectivity
 	if err := db.Ping(); err != nil {
 		_ = db.Close()
 		return nil, err

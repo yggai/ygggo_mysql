@@ -51,8 +51,9 @@ func TestDSNString_BuildFromFields_WithSpecialPassword(t *testing.T) {
 	if mc.DBName != cfg.Database {
 		t.Fatalf("dbname mismatch: got %q want %q", mc.DBName, cfg.Database)
 	}
-	if v := mc.Params["parseTime"]; v != "true" {
-		t.Fatalf("param parseTime mismatch: %q", v)
+	// go-sql-driver/mysql consumes parseTime into mc.ParseTime, not mc.Params
+	if !mc.ParseTime {
+		t.Fatalf("expected parseTime to be true")
 	}
 }
 

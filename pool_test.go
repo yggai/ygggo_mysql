@@ -59,6 +59,43 @@ func TestNewPool_OpenAndPing_Success(t *testing.T) {
 	}
 }
 
+func TestNewPool_UsesDSNFromFields(t *testing.T) {
+	cfg := Config{
+		Driver:   "sqlmock",
+		Host:     "127.0.0.1",
+		Port:     3306,
+		Username: "root",
+		Password: "p@ss%word",
+		Database: "db",
+		Params: map[string]string{
+			"parseTime": "true",
+		},
+	}
+	expectedDSN, err := dsnFromConfig(cfg)
+	if err != nil {
+		t.Fatalf("dsnFromConfig error: %v", err)
+	}
+
+	// Register DSN with sqlmock so NewPool(sql.Open) attaches to this mock.
+	_, mock, err := sqlmock.NewWithDSN(expectedDSN, sqlmock.MonitorPingsOption(true))
+	if err != nil {
+		t.Fatalf("sqlmock.NewWithDSN error: %v", err)
+	}
+	mock.ExpectPing()
+
+	ctx := context.Background()
+	p, err := NewPool(ctx, cfg)
+	if err != nil {
+		t.Fatalf("NewPool error: %v", err)
+	}
+	defer p.Close()
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet expectations: %v", err)
+	}
+}
+
+
 func TestNewPool_OpenFails(t *testing.T) {
 	// Arrange: invalid driver should fail
 	cfg := Config{Driver: "nonexist", DSN: ""}
