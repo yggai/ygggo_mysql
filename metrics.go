@@ -163,7 +163,7 @@ func (p *Pool) recordTransaction(ctx context.Context, duration time.Duration, er
 	p.metrics.transactionDuration.Record(ctx, duration.Seconds(), metric.WithAttributes(attrs...))
 }
 
-// instrumentedQueryWithMetrics wraps query execution with both tracing and metrics
+// instrumentedQueryWithMetrics wraps query execution with tracing, metrics and logging
 func (p *Pool) instrumentedQueryWithMetrics(ctx context.Context, conn *sql.Conn, query string, args ...any) (*sql.Rows, error) {
 	start := time.Now()
 
@@ -176,8 +176,15 @@ func (p *Pool) instrumentedQueryWithMetrics(ctx context.Context, conn *sql.Conn,
 	// Execute query with original context to avoid deadlock
 	rs, err := conn.QueryContext(ctx, query, args...)
 
-	// Record metrics
+	// Record duration
 	duration := time.Since(start)
+
+	// Log the query
+	if p.loggingEnabled {
+		p.logQuery(ctx, "query", query, args, duration, err)
+	}
+
+	// Record metrics
 	if p.metricsEnabled {
 		p.recordQuery(ctx, "query", duration, err)
 	}
@@ -190,7 +197,7 @@ func (p *Pool) instrumentedQueryWithMetrics(ctx context.Context, conn *sql.Conn,
 	return rs, err
 }
 
-// instrumentedExecWithMetrics wraps exec execution with both tracing and metrics
+// instrumentedExecWithMetrics wraps exec execution with tracing, metrics and logging
 func (p *Pool) instrumentedExecWithMetrics(ctx context.Context, conn *sql.Conn, query string, args ...any) (sql.Result, error) {
 	start := time.Now()
 
@@ -203,8 +210,15 @@ func (p *Pool) instrumentedExecWithMetrics(ctx context.Context, conn *sql.Conn, 
 	// Execute with original context to avoid deadlock
 	result, err := conn.ExecContext(ctx, query, args...)
 
-	// Record metrics
+	// Record duration
 	duration := time.Since(start)
+
+	// Log the execution
+	if p.loggingEnabled {
+		p.logQuery(ctx, "exec", query, args, duration, err)
+	}
+
+	// Record metrics
 	if p.metricsEnabled {
 		p.recordQuery(ctx, "exec", duration, err)
 	}

@@ -52,9 +52,20 @@ func (p *Pool) WithinTx(ctx context.Context, fn func(DatabaseTx) error, opts ...
 
 	err := retryWithPolicy(ctx, p.retry, op, Classify)
 
+	// Record duration
+	duration := time.Since(start)
+
+	// Log transaction
+	if p.loggingEnabled {
+		event := "commit"
+		if err != nil {
+			event = "rollback"
+		}
+		p.logTransaction(ctx, event, duration, err)
+	}
+
 	// Record metrics
 	if p.metricsEnabled {
-		duration := time.Since(start)
 		p.recordTransaction(ctx, duration, err)
 	}
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"sync/atomic"
 	"time"
 
@@ -25,6 +26,10 @@ type Pool struct {
 	metricsEnabled bool
 	meterProvider  metric.MeterProvider
 	metrics        *Metrics
+	// logging
+	loggingEnabled     bool
+	logger            *slog.Logger
+	slowQueryThreshold time.Duration
 }
 
 // SetBorrowWarnThreshold sets the warn threshold for held connections.
