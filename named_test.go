@@ -4,8 +4,6 @@ import (
 	"context"
 	"reflect"
 	"testing"
-
-	"github.com/DATA-DOG/go-sqlmock"
 )
 
 type row struct {
@@ -14,48 +12,79 @@ type row struct {
 }
 
 func TestNamedExec_WithStruct(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil { t.Fatalf("sqlmock.New: %v", err) }
-	defer db.Close()
-	p := &Pool{db: db}
+	helper := NewTestHelper(t)
+	defer helper.Close()
 
-	mock.ExpectExec(`INSERT INTO t \(a,b\) VALUES \(\?,\?\)`).WithArgs(1, "x").WillReturnResult(sqlmock.NewResult(1,1))
+	err := helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		// Create test table
+		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INTEGER PRIMARY KEY, a INTEGER, b TEXT)")
+		if err != nil { return err }
 
-	err = p.WithConn(context.Background(), func(c DatabaseConn) error {
-		_, err := c.NamedExec(context.Background(), "INSERT INTO t (a,b) VALUES (:a,:b)", row{A:1, B:"x"})
-		return err
+		// Test named exec with struct
+		_, err = c.NamedExec(context.Background(), "INSERT INTO t (a,b) VALUES (:a,:b)", row{A:1, B:"x"})
+		if err != nil { return err }
+
+		// Verify data was inserted
+		rs, err := c.Query(context.Background(), "SELECT a, b FROM t WHERE a = 1")
+		if err != nil { return err }
+		defer rs.Close()
+
+		if !rs.Next() { t.Fatalf("no rows found") }
+		var a int
+		var b string
+		err = rs.Scan(&a, &b)
+		if err != nil { return err }
+
+		if a != 1 || b != "x" { t.Fatalf("expected a=1, b='x', got a=%d, b='%s'", a, b) }
+
+		return nil
 	})
 	if err != nil { t.Fatalf("NamedExec err: %v", err) }
-	if err := mock.ExpectationsWereMet(); err != nil { t.Fatalf("unmet: %v", err) }
 }
 
 func TestNamedExec_WithSliceStructs(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil { t.Fatalf("sqlmock.New: %v", err) }
-	defer db.Close()
-	p := &Pool{db: db}
+	helper := NewTestHelper(t)
+	defer helper.Close()
 
-	mock.ExpectExec(`INSERT INTO t \(a,b\) VALUES \(\?,\?\)`).WithArgs(1, "x").WillReturnResult(sqlmock.NewResult(1,1))
-	mock.ExpectExec(`INSERT INTO t \(a,b\) VALUES \(\?,\?\)`).WithArgs(2, "y").WillReturnResult(sqlmock.NewResult(1,1))
+	err := helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		// Create test table
+		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INTEGER PRIMARY KEY, a INTEGER, b TEXT)")
+		if err != nil { return err }
 
-	err = p.WithConn(context.Background(), func(c DatabaseConn) error {
+		// Test named exec with slice of structs
 		rows := []row{{1,"x"},{2,"y"}}
-		_, err := c.NamedExec(context.Background(), "INSERT INTO t (a,b) VALUES (:a,:b)", rows)
-		return err
+		_, err = c.NamedExec(context.Background(), "INSERT INTO t (a,b) VALUES (:a,:b)", rows)
+		if err != nil { return err }
+
+		// Verify data was inserted
+		rs, err := c.Query(context.Background(), "SELECT COUNT(*) FROM t")
+		if err != nil { return err }
+		defer rs.Close()
+
+		var count int
+		if rs.Next() {
+			err = rs.Scan(&count)
+			if err != nil { return err }
+		}
+		if count != 2 { t.Fatalf("expected 2 rows, got %d", count) }
+
+		return nil
 	})
 	if err != nil { t.Fatalf("NamedExec slice err: %v", err) }
-	if err := mock.ExpectationsWereMet(); err != nil { t.Fatalf("unmet: %v", err) }
 }
 
 func TestNamedQuery_WithMap(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil { t.Fatalf("sqlmock.New: %v", err) }
-	defer db.Close()
-	p := &Pool{db: db}
+	helper := NewTestHelper(t)
+	defer helper.Close()
 
-	mock.ExpectQuery(`SELECT \* FROM t WHERE id=\?`).WithArgs(42).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(42))
+	err := helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		// Create test table and insert data
+		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INTEGER PRIMARY KEY)")
+		if err != nil { return err }
+		_, err = c.Exec(context.Background(), "INSERT INTO t (id) VALUES (42)")
+		if err != nil { return err }
 
-	err = p.WithConn(context.Background(), func(c DatabaseConn) error {
+		// Test named query with map
 		rs, err := c.NamedQuery(context.Background(), "SELECT * FROM t WHERE id=:id", map[string]any{"id": 42})
 		if err != nil { return err }
 		defer rs.Close()
@@ -69,27 +98,32 @@ func TestNamedQuery_WithMap(t *testing.T) {
 		return nil
 	})
 	if err != nil { t.Fatalf("NamedQuery err: %v", err) }
-	if err := mock.ExpectationsWereMet(); err != nil { t.Fatalf("unmet: %v", err) }
 }
 
 func TestIn_Helper_ExpandsSlice(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil { t.Fatalf("sqlmock.New: %v", err) }
-	defer db.Close()
-	p := &Pool{db: db}
+	helper := NewTestHelper(t)
+	defer helper.Close()
 
-	mock.ExpectQuery(`SELECT \* FROM t WHERE id IN \(\?,\?,\?\) AND kind=\?`).WithArgs(1,2,3,"a").
-		WillReturnRows(sqlmock.NewRows([]string{"n"}).AddRow(1))
+	err := helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		// Create test table and insert data
+		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INTEGER PRIMARY KEY, kind TEXT)")
+		if err != nil { return err }
+		_, err = c.Exec(context.Background(), "INSERT INTO t (id, kind) VALUES (1, 'a'), (2, 'a'), (3, 'a')")
+		if err != nil { return err }
 
-	err = p.WithConn(context.Background(), func(c DatabaseConn) error {
+		// Test BuildIn helper
 		q, args, err := BuildIn("SELECT * FROM t WHERE id IN (?) AND kind=?", []int{1,2,3}, "a")
 		if err != nil { return err }
 		rs, err := c.Query(context.Background(), q, args...)
 		if err != nil { return err }
 		defer rs.Close()
+
+		// Count results
+		count := 0
+		for rs.Next() { count++ }
+		if count != 3 { t.Fatalf("expected 3 rows, got %d", count) }
+
 		return nil
 	})
 	if err != nil { t.Fatalf("BuildIn err: %v", err) }
-	if err := mock.ExpectationsWereMet(); err != nil { t.Fatalf("unmet: %v", err) }
 }
-

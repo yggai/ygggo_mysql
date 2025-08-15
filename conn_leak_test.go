@@ -4,17 +4,13 @@ import (
 	"context"
 	"testing"
 	"time"
-
-	"github.com/DATA-DOG/go-sqlmock"
 )
 
 func TestLeakDetection_ReportsWhenHeldBeyondThreshold(t *testing.T) {
-	// Arrange
-	db, _, err := sqlmock.New()
-	if err != nil { t.Fatalf("sqlmock.New: %v", err) }
-	db.SetMaxOpenConns(1)
-	p := &Pool{db: db}
-	t.Cleanup(func(){ _ = p.Close() })
+	helper := NewTestHelper(t)
+	defer helper.Close()
+
+	p := helper.Pool()
 
 	// Configure leak threshold and handler
 	p.SetBorrowWarnThreshold(20 * time.Millisecond)
@@ -38,17 +34,16 @@ func TestLeakDetection_ReportsWhenHeldBeyondThreshold(t *testing.T) {
 }
 
 func TestLeakDetection_NoReportWhenWithinThreshold(t *testing.T) {
-	// Arrange
-	db, _, err := sqlmock.New()
-	if err != nil { t.Fatalf("sqlmock.New: %v", err) }
-	p := &Pool{db: db}
-	t.Cleanup(func(){ _ = p.Close() })
+	helper := NewTestHelper(t)
+	defer helper.Close()
+
+	p := helper.Pool()
 
 	p.SetBorrowWarnThreshold(50 * time.Millisecond)
 	ch := make(chan BorrowLeak, 1)
 	p.SetLeakHandler(func(info BorrowLeak){ ch <- info })
 
-	err = p.WithConn(context.Background(), func(c DatabaseConn) error {
+	err := p.WithConn(context.Background(), func(c DatabaseConn) error {
 		time.Sleep(10 * time.Millisecond)
 		return nil
 	})

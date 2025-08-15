@@ -77,14 +77,11 @@ func (c *Conn) markAcquired() {
 func (c *Conn) Close() error {
 	if c == nil || c.inner == nil { return nil }
 
-	// Record connection release for metrics (using a separate goroutine to avoid deadlock)
-	if c.p != nil && c.p.metricsEnabled && c.acqNS > 0 {
-		duration := time.Duration(time.Now().UnixNano() - c.acqNS)
-		// Use a goroutine to avoid blocking the close operation
-		go func() {
-			c.p.recordConnectionReleased(context.Background(), duration)
-		}()
-	}
+	// TODO: Re-enable connection metrics after fixing deadlock issues
+	// if c.p != nil && c.p.metricsEnabled && c.acqNS > 0 {
+	//     duration := time.Duration(time.Now().UnixNano() - c.acqNS)
+	//     c.p.recordConnectionReleased(context.Background(), duration)
+	// }
 
 	c.p.onReturn()
 	if c.cache != nil { c.cache.closeAll() }

@@ -5,17 +5,13 @@ import (
 	"errors"
 	"testing"
 	"time"
-
-	"github.com/DATA-DOG/go-sqlmock"
 )
 
 func TestWithConn_AutoReturnAndFnError(t *testing.T) {
-	// Arrange a single-conn pool
-	db, _, err := sqlmock.New()
-	if err != nil { t.Fatalf("sqlmock.New: %v", err) }
-	db.SetMaxOpenConns(1)
-	p := &Pool{db: db}
-	t.Cleanup(func(){ _ = p.Close() })
+	helper := NewTestHelper(t)
+	defer helper.Close()
+
+	p := helper.Pool()
 
 	// First goroutine holds the only connection until released
 	release := make(chan struct{})
