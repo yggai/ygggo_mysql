@@ -6,43 +6,44 @@ import (
 	"log"
 	"os"
 
-	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/yggai/ygggo_mysql"
 )
 
 func main() {
 	ctx := context.Background()
-	
+
 	// Check if we should use mock or real DB
 	isMock := os.Getenv("USE_MOCK") != "false" // default to mock
-	
+
 	var pool *ygggo_mysql.Pool
-	var mock sqlmock.Sqlmock
+	var mock ygggo_mysql.MockExpectations
 	var err error
-	
+
 	if isMock {
 		fmt.Println("Using mock database")
-		pool, mock, err = ygggo_mysql.NewMockPool(ctx, ygggo_mysql.Config{})
-		if err != nil { log.Fatalf("NewMockPool: %v", err) }
-		
+		pool, mock, err = ygggo_mysql.NewPoolWithMock(ctx, ygggo_mysql.Config{}, true)
+		if err != nil { log.Fatalf("NewPoolWithMock: %v", err) }
+
 		// Set up mock expectations
-		mock.ExpectQuery(`SELECT 1`).WillReturnRows(sqlmock.NewRows([]string{"result"}).AddRow(1))
+		rows := ygggo_mysql.NewRows([]string{"result"})
+		rows = ygggo_mysql.AddRow(rows, 1)
+		mock.ExpectQuery(`SELECT 1`).WillReturnRows(rows)
 		mock.ExpectBegin()
-		mock.ExpectExec(`INSERT INTO users \(name\) VALUES \(\?\)`).WithArgs("Alice").WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectExec(`INSERT INTO users \(name\) VALUES \(\?\)`).WithArgs("Alice").WillReturnResult(ygggo_mysql.NewResult(1, 1))
 		mock.ExpectCommit()
 		mock.ExpectExec(`INSERT INTO users \(name,email\) VALUES \(\?,\?\),\(\?,\?\)`).
 			WithArgs("Bob", "bob@example.com", "Charlie", "charlie@example.com").
-			WillReturnResult(sqlmock.NewResult(2, 2))
+			WillReturnResult(ygggo_mysql.NewResult(2, 2))
 	} else {
 		fmt.Println("Using real database")
-		pool, err = ygggo_mysql.NewPool(ctx, ygggo_mysql.Config{
+		pool, mock, err = ygggo_mysql.NewPoolWithMock(ctx, ygggo_mysql.Config{
 			Host: "localhost",
 			Port: 3306,
 			Username: "root",
 			Password: "password",
 			Database: "test",
-		})
-		if err != nil { log.Fatalf("NewPool: %v", err) }
+		}, false)
+		if err != nil { log.Fatalf("NewPoolWithMock: %v", err) }
 	}
 	defer pool.Close()
 	

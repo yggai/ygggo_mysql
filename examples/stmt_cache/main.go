@@ -5,33 +5,28 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/yggai/ygggo_mysql"
 )
 
 func main() {
 	ctx := context.Background()
 
-	// Use sqlmock as an in-memory MySQL to demonstrate StmtCache behavior
-	dsn := "example_sqlmock_stmt_cache"
-	db, mock, err := sqlmock.NewWithDSN(dsn, sqlmock.MonitorPingsOption(true))
-	if err != nil { log.Fatalf("sqlmock.NewWithDSN: %v", err) }
-	defer db.Close()
-	mock.ExpectPing()
-
-	// Expect one Prepare for the INSERT statement, then two Execs reusing it
-	prep := mock.ExpectPrepare(`INSERT INTO t\(a\) VALUES\(\?\)`)
-	prep.ExpectExec().WithArgs(1).WillReturnResult(sqlmock.NewResult(1, 1))
-	prep.ExpectExec().WithArgs(2).WillReturnResult(sqlmock.NewResult(2, 1))
-
-	// Also show QueryCached reuse (one prepare, one query)
-	mock.ExpectPrepare(`SELECT id,name FROM t`).
-		ExpectQuery().
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(1, "a").AddRow(2, "b"))
-
-	pool, err := ygggo_mysql.NewPool(ctx, ygggo_mysql.Config{Driver: "sqlmock", DSN: dsn})
-	if err != nil { log.Fatalf("NewPool: %v", err) }
+	pool, mock, err := ygggo_mysql.NewPoolWithMock(ctx, ygggo_mysql.Config{}, true)
+	if err != nil { log.Fatalf("NewPoolWithMock: %v", err) }
 	defer pool.Close()
+
+	if mock != nil {
+		// Expect one Prepare for the INSERT statement, then two Execs reusing it
+		prep := mock.ExpectPrepare(`INSERT INTO t\(a\) VALUES\(\?\)`)
+		prep.ExpectExec().WithArgs(1).WillReturnResult(ygggo_mysql.NewResult(1, 1))
+		prep.ExpectExec().WithArgs(2).WillReturnResult(ygggo_mysql.NewResult(2, 1))
+
+		// Also show QueryCached reuse (one prepare, one query)
+		rows := ygggo_mysql.NewRows([]string{"id", "name"})
+		rows = ygggo_mysql.AddRow(rows, 1, "a")
+		rows = ygggo_mysql.AddRow(rows, 2, "b")
+		mock.ExpectPrepare(`SELECT id,name FROM t`).ExpectQuery().WillReturnRows(rows)
+	}
 
 	// Use a single connection and enable LRU stmt cache (capacity 2)
 	err = pool.WithConn(ctx, func(c *ygggo_mysql.Conn) error {
@@ -49,7 +44,9 @@ func main() {
 	})
 	if err != nil { log.Fatalf("WithConn: %v", err) }
 
-	if err := mock.ExpectationsWereMet(); err != nil { log.Fatalf("expectations: %v", err) }
+	if mock != nil {
+		if err := mock.ExpectationsWereMet(); err != nil { log.Fatalf("expectations: %v", err) }
+	}
 	fmt.Println("ygggo_mysql example: stmt_cache (prepared once, reused)")
 }
 

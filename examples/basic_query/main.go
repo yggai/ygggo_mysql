@@ -5,24 +5,21 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/yggai/ygggo_mysql"
 )
 
 func main() {
 	ctx := context.Background()
 
-	// Setup in-memory (sqlmock) database and expectations
-	dsn := "example_sqlmock_basic_query"
-	db, mock, err := sqlmock.NewWithDSN(dsn, sqlmock.MonitorPingsOption(true))
-	if err != nil { log.Fatalf("sqlmock.NewWithDSN: %v", err) }
-	defer db.Close()
-	mock.ExpectPing()
-	mock.ExpectQuery(`SELECT 1`).WillReturnRows(sqlmock.NewRows([]string{"c"}).AddRow(1))
-
-	pool, err := ygggo_mysql.NewPool(ctx, ygggo_mysql.Config{Driver: "sqlmock", DSN: dsn})
-	if err != nil { log.Fatalf("NewPool: %v", err) }
+	pool, mock, err := ygggo_mysql.NewPoolWithMock(ctx, ygggo_mysql.Config{}, true)
+	if err != nil { log.Fatalf("NewPoolWithMock: %v", err) }
 	defer pool.Close()
+
+	if mock != nil {
+		rows := ygggo_mysql.NewRows([]string{"c"})
+		rows = ygggo_mysql.AddRow(rows, 1)
+		mock.ExpectQuery(`SELECT 1`).WillReturnRows(rows)
+	}
 
 	err = pool.WithConn(ctx, func(c *ygggo_mysql.Conn) error {
 		rs, err := c.Query(ctx, "SELECT 1")
@@ -35,7 +32,9 @@ func main() {
 	})
 	if err != nil { log.Fatalf("WithConn err: %v", err) }
 
-	if err := mock.ExpectationsWereMet(); err != nil { log.Fatalf("expectations: %v", err) }
+	if mock != nil {
+		if err := mock.ExpectationsWereMet(); err != nil { log.Fatalf("expectations: %v", err) }
+	}
 	fmt.Println("ygggo_mysql example: basic_query")
 }
 
