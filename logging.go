@@ -37,11 +37,7 @@ func (p *Pool) SetLogger(logger *slog.Logger) {
 	p.logger = logger
 }
 
-// SetSlowQueryThreshold sets the threshold for slow query logging
-func (p *Pool) SetSlowQueryThreshold(threshold time.Duration) {
-	if p == nil { return }
-	p.slowQueryThreshold = threshold
-}
+// Note: SetSlowQueryThreshold is now defined in pool.go
 
 // logQuery logs database query execution with structured fields
 func (p *Pool) logQuery(ctx context.Context, operation, query string, args []any, duration time.Duration, err error) {
@@ -83,6 +79,11 @@ func (p *Pool) logQuery(ctx context.Context, operation, query string, args []any
 			level = slog.LevelError
 		}
 		p.logger.LogAttrs(ctx, level, "database query executed", attrs...)
+	}
+
+	// Record to slow query recorder if enabled
+	if p.slowQueryRecorder != nil {
+		p.slowQueryRecorder.Record(ctx, query, args, duration, err)
 	}
 }
 

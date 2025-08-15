@@ -30,6 +30,8 @@ type Pool struct {
 	loggingEnabled     bool
 	logger            *slog.Logger
 	slowQueryThreshold time.Duration
+	// slow query recording
+	slowQueryRecorder *SlowQueryRecorder
 }
 
 // SetBorrowWarnThreshold sets the warn threshold for held connections.
@@ -101,10 +103,13 @@ func NewPool(ctx context.Context, cfg Config) (*Pool, error) {
 	return p, nil
 }
 
-// Close closes the pool (placeholder).
+// Close closes the pool and all its connections.
 func (p *Pool) Close() error {
 	if p == nil || p.db == nil {
 		return nil
+	}
+	if p.slowQueryRecorder != nil {
+		p.slowQueryRecorder.Close()
 	}
 	return p.db.Close()
 }
@@ -124,3 +129,41 @@ func (p *Pool) SelfCheck(ctx context.Context) error {
 
 // internal retry policy storage (temporary until full feature wired)
 func (p *Pool) setRetryPolicy(r RetryPolicy) { p.retry = r }
+
+// EnableSlowQueryRecording enables slow query recording with the given configuration
+func (p *Pool) EnableSlowQueryRecording(config SlowQueryConfig, storage SlowQueryStorage) {
+	p.slowQueryRecorder = NewSlowQueryRecorder(config, storage)
+}
+
+// DisableSlowQueryRecording disables slow query recording
+func (p *Pool) DisableSlowQueryRecording() {
+	if p.slowQueryRecorder != nil {
+		p.slowQueryRecorder.Close()
+		p.slowQueryRecorder = nil
+	}
+}
+
+// GetSlowQueryRecorder returns the slow query recorder
+func (p *Pool) GetSlowQueryRecorder() *SlowQueryRecorder {
+	return p.slowQueryRecorder
+}
+
+// IsSlowQueryRecordingEnabled returns whether slow query recording is enabled
+func (p *Pool) IsSlowQueryRecordingEnabled() bool {
+	return p.slowQueryRecorder != nil && p.slowQueryRecorder.IsEnabled()
+}
+
+// SetSlowQueryThreshold sets the slow query threshold for both logging and recording
+func (p *Pool) SetSlowQueryThreshold(threshold time.Duration) {
+	p.slowQueryThreshold = threshold
+	if p.slowQueryRecorder != nil {
+		p.slowQueryRecorder.SetThreshold(threshold)
+	}
+}
+
+// GetSlowQueryThreshold returns the current slow query threshold
+func (p *Pool) GetSlowQueryThreshold() time.Duration {
+	return p.slowQueryThreshold
+}
+
+
