@@ -14,7 +14,7 @@ func TestConn_Exec_Success(t *testing.T) {
 	p := &Pool{db: db}
 
 	mock.ExpectExec(`INSERT INTO t\(a,b\) VALUES\(\?,\?\)`).WithArgs(1, "x").WillReturnResult(sqlmock.NewResult(1, 1))
-	err = p.WithConn(context.Background(), func(c *Conn) error {
+	err = p.WithConn(context.Background(), func(c DatabaseConn) error {
 		res, err := c.Exec(context.Background(), "INSERT INTO t(a,b) VALUES(?,?)", 1, "x")
 		if err != nil { return err }
 		affected, _ := res.RowsAffected()
@@ -34,7 +34,7 @@ func TestConn_Query_And_Stream(t *testing.T) {
 	rows := sqlmock.NewRows([]string{"id","name"}).AddRow(1, "a").AddRow(2, "b")
 	mock.ExpectQuery("SELECT id,name FROM t").WillReturnRows(rows)
 
-	err = p.WithConn(context.Background(), func(c *Conn) error {
+	err = p.WithConn(context.Background(), func(c DatabaseConn) error {
 		// Query and read all
 		rs, err := c.Query(context.Background(), "SELECT id,name FROM t")
 		if err != nil { return err }
@@ -50,7 +50,7 @@ func TestConn_Query_And_Stream(t *testing.T) {
 	rows2 := sqlmock.NewRows([]string{"id","name"}).AddRow(1, "a").AddRow(2, "b")
 	mock.ExpectQuery("SELECT id,name FROM t").WillReturnRows(rows2)
 	callbacks := 0
-	err = p.WithConn(context.Background(), func(c *Conn) error {
+	err = p.WithConn(context.Background(), func(c DatabaseConn) error {
 		return c.QueryStream(context.Background(), "SELECT id,name FROM t", func(_ []any) error {
 			callbacks++
 			return nil

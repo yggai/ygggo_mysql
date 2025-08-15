@@ -29,7 +29,7 @@ func main() {
 	}
 
 	// Use a single connection and enable LRU stmt cache (capacity 2)
-	err = pool.WithConn(ctx, func(c *ygggo_mysql.Conn) error {
+	err = pool.WithConn(ctx, func(c ygggo_mysql.DatabaseConn) error {
 		c.EnableStmtCache(2)
 		if _, err := c.ExecCached(ctx, "INSERT INTO t(a) VALUES(?)", 1); err != nil { return err }
 		if _, err := c.ExecCached(ctx, "INSERT INTO t(a) VALUES(?)", 2); err != nil { return err }

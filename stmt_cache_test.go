@@ -17,7 +17,7 @@ func TestStmtCache_PerConn_CachesPrepare(t *testing.T) {
 	prep.ExpectExec().WithArgs(1).WillReturnResult(sqlmock.NewResult(1,1))
 	prep.ExpectExec().WithArgs(2).WillReturnResult(sqlmock.NewResult(1,1))
 
-	err = p.WithConn(context.Background(), func(c *Conn) error {
+	err = p.WithConn(context.Background(), func(c DatabaseConn) error {
 		c.EnableStmtCache(2)
 		if _, err := c.ExecCached(context.Background(), "INSERT INTO t(a) VALUES(?)", 1); err != nil { return err }
 		if _, err := c.ExecCached(context.Background(), "INSERT INTO t(a) VALUES(?)", 2); err != nil { return err }
@@ -38,7 +38,7 @@ func TestStmtCache_LRUEvicts(t *testing.T) {
 	mock.ExpectPrepare(`SELECT 2`).ExpectQuery().WillReturnRows(sqlmock.NewRows([]string{"c"}).AddRow(2))
 	mock.ExpectPrepare(`SELECT 1`).ExpectQuery().WillReturnRows(sqlmock.NewRows([]string{"c"}).AddRow(1))
 
-	err = p.WithConn(context.Background(), func(c *Conn) error {
+	err = p.WithConn(context.Background(), func(c DatabaseConn) error {
 		c.EnableStmtCache(1)
 		rs, err := c.QueryCached(context.Background(), "SELECT 1")
 		if err != nil { return err }
@@ -66,13 +66,13 @@ func TestStmtCache_PerConn_Isolated(t *testing.T) {
 	mock.ExpectPrepare(`UPDATE t SET a=\?`).ExpectExec().WithArgs(2).WillReturnResult(sqlmock.NewResult(0,1))
 
 	ctx := context.Background()
-	err = p.WithConn(ctx, func(c1 *Conn) error {
+	err = p.WithConn(ctx, func(c1 DatabaseConn) error {
 		c1.EnableStmtCache(2)
 		_, err := c1.ExecCached(ctx, "UPDATE t SET a=?", 1)
 		return err
 	})
 	if err != nil { t.Fatalf("c1 err: %v", err) }
-	err = p.WithConn(ctx, func(c2 *Conn) error {
+	err = p.WithConn(ctx, func(c2 DatabaseConn) error {
 		c2.EnableStmtCache(2)
 		_, err := c2.ExecCached(ctx, "UPDATE t SET a=?", 2)
 		return err

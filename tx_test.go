@@ -19,7 +19,7 @@ func TestWithinTx_CommitOnSuccess(t *testing.T) {
 	mock.ExpectExec(`INSERT INTO t\(a\) VALUES\(\?\)`).WithArgs(1).WillReturnResult(sqlmock.NewResult(1,1))
 	mock.ExpectCommit()
 
-	err = p.WithinTx(context.Background(), func(tx *Tx) error {
+	err = p.WithinTx(context.Background(), func(tx DatabaseTx) error {
 		_, err := tx.Exec(context.Background(), "INSERT INTO t(a) VALUES(?)", 1)
 		return err
 	})
@@ -37,7 +37,7 @@ func TestWithinTx_RollbackOnFnError(t *testing.T) {
 	mock.ExpectRollback()
 
 	sentinel := errors.New("boom")
-	err = p.WithinTx(context.Background(), func(tx *Tx) error { return sentinel })
+	err = p.WithinTx(context.Background(), func(tx DatabaseTx) error { return sentinel })
 	if !errors.Is(err, sentinel) { t.Fatalf("expected sentinel, got %v", err) }
 	if err := mock.ExpectationsWereMet(); err != nil { t.Fatalf("unmet: %v", err) }
 }
@@ -58,7 +58,7 @@ func TestWithinTx_RetryOnDeadlock(t *testing.T) {
 	mock.ExpectExec(`UPDATE t SET a=\? WHERE id=\?`).WithArgs(2, 1).WillReturnResult(sqlmock.NewResult(0,1))
 	mock.ExpectCommit()
 
-	err = p.WithinTx(context.Background(), func(tx *Tx) error {
+	err = p.WithinTx(context.Background(), func(tx DatabaseTx) error {
 		_, err := tx.Exec(context.Background(), "UPDATE t SET a=? WHERE id=?", 2, 1)
 		return err
 	})

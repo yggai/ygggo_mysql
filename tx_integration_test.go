@@ -22,7 +22,7 @@ func TestWithinTx_Retry_DeadlockThenSuccess(t *testing.T) {
 	mock.ExpectExec(`UPDATE t SET a=\? WHERE id=\?`).WithArgs(2,1).WillReturnResult(sqlmock.NewResult(0,1))
 	mock.ExpectCommit()
 
-	err = p.WithinTx(context.Background(), func(tx *Tx) error {
+	err = p.WithinTx(context.Background(), func(tx DatabaseTx) error {
 		_, err := tx.Exec(context.Background(), "UPDATE t SET a=? WHERE id=?", 2, 1)
 		return err
 	})
@@ -44,7 +44,7 @@ func TestWithinTx_Retry_ReadOnlyThenSuccess(t *testing.T) {
 	mock.ExpectExec(`INSERT INTO t\(a\) VALUES\(\?\)`).WithArgs(1).WillReturnResult(sqlmock.NewResult(1,1))
 	mock.ExpectCommit()
 
-	err = p.WithinTx(context.Background(), func(tx *Tx) error {
+	err = p.WithinTx(context.Background(), func(tx DatabaseTx) error {
 		_, err := tx.Exec(context.Background(), "INSERT INTO t(a) VALUES(?)", 1)
 		return err
 	})

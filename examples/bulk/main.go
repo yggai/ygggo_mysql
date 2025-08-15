@@ -27,7 +27,7 @@ func main() {
 			WillReturnResult(ygggo_mysql.NewResult(0, 2))
 	}
 
-	err = pool.WithConn(ctx, func(c *ygggo_mysql.Conn) error {
+	err = pool.WithConn(ctx, func(c ygggo_mysql.DatabaseConn) error {
 		rows := [][]any{{1, "x"}, {2, "y"}}
 		res, err := c.BulkInsert(ctx, "t", []string{"a", "b"}, rows)
 		if err != nil { return err }

@@ -22,7 +22,7 @@ func main() {
 		mock.ExpectQuery(`SELECT id,name FROM t`).WillReturnRows(rows)
 	}
 
-	err = pool.WithConn(ctx, func(c *ygggo_mysql.Conn) error {
+	err = pool.WithConn(ctx, func(c ygggo_mysql.DatabaseConn) error {
 		return c.QueryStream(ctx, "SELECT id,name FROM t", func(_ []any) error {
 			return nil
 		})

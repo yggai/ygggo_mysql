@@ -21,7 +21,7 @@ func TestWithConn_AutoReturnAndFnError(t *testing.T) {
 	release := make(chan struct{})
 	done := make(chan struct{})
 	go func() {
-		_ = p.WithConn(context.Background(), func(c *Conn) error {
+		_ = p.WithConn(context.Background(), func(c DatabaseConn) error {
 			<-release // hold connection
 			return nil
 		})
@@ -49,7 +49,7 @@ func TestWithConn_AutoReturnAndFnError(t *testing.T) {
 
 	// WithConn should propagate fn error
 	sent := errors.New("sentinel")
-	err = p.WithConn(context.Background(), func(c *Conn) error { return sent })
+	err = p.WithConn(context.Background(), func(c DatabaseConn) error { return sent })
 	if !errors.Is(err, sent) { t.Fatalf("expected sentinel error, got %v", err) }
 }
 

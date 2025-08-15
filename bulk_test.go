@@ -17,7 +17,7 @@ func TestBulkInsert_Simple(t *testing.T) {
 		WithArgs(1, "x", 2, "y").
 		WillReturnResult(sqlmock.NewResult(0, 2))
 
-	err = p.WithConn(context.Background(), func(c *Conn) error {
+	err = p.WithConn(context.Background(), func(c DatabaseConn) error {
 		rows := [][]any{{1, "x"}, {2, "y"}}
 		res, err := c.BulkInsert(context.Background(), "t", []string{"a", "b"}, rows)
 		if err != nil { return err }
@@ -39,7 +39,7 @@ func TestInsertOnDuplicate_Simple(t *testing.T) {
 		WithArgs(1, "x", 2, "y").
 		WillReturnResult(sqlmock.NewResult(0, 2))
 
-	err = p.WithConn(context.Background(), func(c *Conn) error {
+	err = p.WithConn(context.Background(), func(c DatabaseConn) error {
 		rows := [][]any{{1, "x"}, {2, "y"}}
 		res, err := c.InsertOnDuplicate(context.Background(), "t", []string{"a", "b"}, rows, []string{"b"})
 		if err != nil { return err }
@@ -57,7 +57,7 @@ func TestBulkInsert_EmptyRows_Error(t *testing.T) {
 	defer db.Close()
 	p := &Pool{db: db}
 
-	err = p.WithConn(context.Background(), func(c *Conn) error {
+	err = p.WithConn(context.Background(), func(c DatabaseConn) error {
 		_, err := c.BulkInsert(context.Background(), "t", []string{"a"}, nil)
 		if err == nil { t.Fatalf("expected error for empty rows") }
 		return nil
@@ -71,7 +71,7 @@ func TestBulkInsert_ColumnMismatch_Error(t *testing.T) {
 	defer db.Close()
 	p := &Pool{db: db}
 
-	err = p.WithConn(context.Background(), func(c *Conn) error {
+	err = p.WithConn(context.Background(), func(c DatabaseConn) error {
 		rows := [][]any{{1, "x"}, {2}} // mismatch for second row
 		_, err := c.BulkInsert(context.Background(), "t", []string{"a", "b"}, rows)
 		if err == nil { t.Fatalf("expected error for mismatch columns") }

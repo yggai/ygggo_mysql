@@ -48,7 +48,7 @@ func main() {
 	defer pool.Close()
 	
 	// Test basic query
-	err = pool.WithConn(ctx, func(c *ygggo_mysql.Conn) error {
+	err = pool.WithConn(ctx, func(c ygggo_mysql.DatabaseConn) error {
 		rs, err := c.Query(ctx, "SELECT 1")
 		if err != nil { return err }
 		defer rs.Close()
@@ -62,7 +62,7 @@ func main() {
 	if err != nil { log.Fatalf("Query: %v", err) }
 	
 	// Test transaction
-	err = pool.WithinTx(ctx, func(tx *ygggo_mysql.Tx) error {
+	err = pool.WithinTx(ctx, func(tx ygggo_mysql.DatabaseTx) error {
 		_, err := tx.Exec(ctx, "INSERT INTO users (name) VALUES (?)", "Alice")
 		return err
 	})
@@ -70,7 +70,7 @@ func main() {
 	fmt.Println("Transaction completed")
 	
 	// Test bulk insert
-	err = pool.WithConn(ctx, func(c *ygggo_mysql.Conn) error {
+	err = pool.WithConn(ctx, func(c ygggo_mysql.DatabaseConn) error {
 		rows := [][]any{{"Bob", "bob@example.com"}, {"Charlie", "charlie@example.com"}}
 		_, err := c.BulkInsert(ctx, "users", []string{"name", "email"}, rows)
 		return err

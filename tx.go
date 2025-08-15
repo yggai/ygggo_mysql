@@ -19,7 +19,7 @@ func (tx *Tx) Exec(ctx context.Context, query string, args ...any) (sql.Result, 
 }
 
 // WithinTx executes fn within a transaction using retryWithPolicy for retryable errors.
-func (p *Pool) WithinTx(ctx context.Context, fn func(*Tx) error, opts ...any) error {
+func (p *Pool) WithinTx(ctx context.Context, fn func(DatabaseTx) error, opts ...any) error {
 	if p == nil || p.db == nil { return errors.New("nil pool") }
 	op := func() error {
 		tx, err := p.db.BeginTx(ctx, nil)

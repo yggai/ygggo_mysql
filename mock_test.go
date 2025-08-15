@@ -25,7 +25,7 @@ func TestNewMockPool_WithConnAndQuery(t *testing.T) {
 	defer pool.Close()
 
 	mock.ExpectQuery(`SELECT 1`).WillReturnRows(sqlmock.NewRows([]string{"c"}).AddRow(1))
-	err = pool.WithConn(ctx, func(c *Conn) error {
+	err = pool.WithConn(ctx, func(c DatabaseConn) error {
 		rs, err := c.Query(ctx, "SELECT 1")
 		if err != nil { return err }
 		defer rs.Close()
@@ -48,7 +48,7 @@ func TestNewMockPool_WithinTx(t *testing.T) {
 	mock.ExpectExec(`INSERT INTO t\(a\) VALUES\(\?\)`).WithArgs(1).WillReturnResult(sqlmock.NewResult(1,1))
 	mock.ExpectCommit()
 
-	err = pool.WithinTx(ctx, func(tx *Tx) error {
+	err = pool.WithinTx(ctx, func(tx DatabaseTx) error {
 		_, err := tx.Exec(ctx, "INSERT INTO t(a) VALUES(?)", 1)
 		return err
 	})
@@ -66,7 +66,7 @@ func TestNewMockPool_BulkInsert(t *testing.T) {
 		WithArgs(1, "x", 2, "y").
 		WillReturnResult(sqlmock.NewResult(0, 2))
 
-	err = pool.WithConn(ctx, func(c *Conn) error {
+	err = pool.WithConn(ctx, func(c DatabaseConn) error {
 		rows := [][]any{{1, "x"}, {2, "y"}}
 		_, err := c.BulkInsert(ctx, "t", []string{"a", "b"}, rows)
 		return err
@@ -83,7 +83,7 @@ func TestNewMockPool_NamedExec(t *testing.T) {
 
 	mock.ExpectExec(`INSERT INTO t \(a,b\) VALUES \(\?,\?\)`).WithArgs(1, "x").WillReturnResult(sqlmock.NewResult(1,1))
 
-	err = pool.WithConn(ctx, func(c *Conn) error {
+	err = pool.WithConn(ctx, func(c DatabaseConn) error {
 		_, err := c.NamedExec(ctx, "INSERT INTO t (a,b) VALUES (:a,:b)", map[string]any{"a": 1, "b": "x"})
 		return err
 	})

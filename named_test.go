@@ -21,7 +21,7 @@ func TestNamedExec_WithStruct(t *testing.T) {
 
 	mock.ExpectExec(`INSERT INTO t \(a,b\) VALUES \(\?,\?\)`).WithArgs(1, "x").WillReturnResult(sqlmock.NewResult(1,1))
 
-	err = p.WithConn(context.Background(), func(c *Conn) error {
+	err = p.WithConn(context.Background(), func(c DatabaseConn) error {
 		_, err := c.NamedExec(context.Background(), "INSERT INTO t (a,b) VALUES (:a,:b)", row{A:1, B:"x"})
 		return err
 	})
@@ -38,7 +38,7 @@ func TestNamedExec_WithSliceStructs(t *testing.T) {
 	mock.ExpectExec(`INSERT INTO t \(a,b\) VALUES \(\?,\?\)`).WithArgs(1, "x").WillReturnResult(sqlmock.NewResult(1,1))
 	mock.ExpectExec(`INSERT INTO t \(a,b\) VALUES \(\?,\?\)`).WithArgs(2, "y").WillReturnResult(sqlmock.NewResult(1,1))
 
-	err = p.WithConn(context.Background(), func(c *Conn) error {
+	err = p.WithConn(context.Background(), func(c DatabaseConn) error {
 		rows := []row{{1,"x"},{2,"y"}}
 		_, err := c.NamedExec(context.Background(), "INSERT INTO t (a,b) VALUES (:a,:b)", rows)
 		return err
@@ -55,7 +55,7 @@ func TestNamedQuery_WithMap(t *testing.T) {
 
 	mock.ExpectQuery(`SELECT \* FROM t WHERE id=\?`).WithArgs(42).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(42))
 
-	err = p.WithConn(context.Background(), func(c *Conn) error {
+	err = p.WithConn(context.Background(), func(c DatabaseConn) error {
 		rs, err := c.NamedQuery(context.Background(), "SELECT * FROM t WHERE id=:id", map[string]any{"id": 42})
 		if err != nil { return err }
 		defer rs.Close()
@@ -81,7 +81,7 @@ func TestIn_Helper_ExpandsSlice(t *testing.T) {
 	mock.ExpectQuery(`SELECT \* FROM t WHERE id IN \(\?,\?,\?\) AND kind=\?`).WithArgs(1,2,3,"a").
 		WillReturnRows(sqlmock.NewRows([]string{"n"}).AddRow(1))
 
-	err = p.WithConn(context.Background(), func(c *Conn) error {
+	err = p.WithConn(context.Background(), func(c DatabaseConn) error {
 		q, args, err := BuildIn("SELECT * FROM t WHERE id IN (?) AND kind=?", []int{1,2,3}, "a")
 		if err != nil { return err }
 		rs, err := c.Query(context.Background(), q, args...)

@@ -21,7 +21,7 @@ func main() {
 		mock.ExpectCommit()
 	}
 
-	err = pool.WithinTx(ctx, func(tx *ygggo_mysql.Tx) error {
+	err = pool.WithinTx(ctx, func(tx ygggo_mysql.DatabaseTx) error {
 		_, err := tx.Exec(ctx, "INSERT INTO t(a) VALUES(?)", 1)
 		return err
 	})

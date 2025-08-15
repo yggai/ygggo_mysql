@@ -40,7 +40,7 @@ func main() {
 		mock.ExpectQuery(`SELECT \* FROM users WHERE id IN \(\?,\?,\?\) AND active=\?`).WithArgs(1, 2, 3, true).WillReturnRows(rows2)
 	}
 
-	err = pool.WithConn(ctx, func(c *ygggo_mysql.Conn) error {
+	err = pool.WithConn(ctx, func(c ygggo_mysql.DatabaseConn) error {
 		// Single struct
 		_, err := c.NamedExec(ctx, "INSERT INTO users (id,name) VALUES (:id,:name)", User{ID: 1, Name: "Alice"})
 		if err != nil { return err }

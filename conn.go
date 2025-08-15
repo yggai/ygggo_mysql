@@ -24,7 +24,7 @@ type Conn struct{
 }
 
 // WithConn acquires a connection, calls fn, and always returns the connection.
-func (p *Pool) WithConn(ctx context.Context, fn func(*Conn) error) error {
+func (p *Pool) WithConn(ctx context.Context, fn func(DatabaseConn) error) error {
 	conn, err := p.Acquire(ctx)
 	if err != nil { return err }
 	defer conn.Close()
@@ -53,7 +53,7 @@ func (c *Conn) QueryCached(ctx context.Context, query string, args ...any) (*sql
 }
 
 // Acquire gets a connection from the underlying *sql.DB honoring context.
-func (p *Pool) Acquire(ctx context.Context) (*Conn, error) {
+func (p *Pool) Acquire(ctx context.Context) (DatabaseConn, error) {
 	if p == nil || p.db == nil { return nil, errors.New("nil pool") }
 	c, err := p.db.Conn(ctx)
 	if err != nil { return nil, err }

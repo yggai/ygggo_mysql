@@ -21,7 +21,7 @@ func main() {
 		mock.ExpectQuery(`SELECT 1`).WillReturnRows(rows)
 	}
 
-	err = pool.WithConn(ctx, func(c *ygggo_mysql.Conn) error {
+	err = pool.WithConn(ctx, func(c ygggo_mysql.DatabaseConn) error {
 		rs, err := c.Query(ctx, "SELECT 1")
 		if err != nil { return err }
 		defer rs.Close()
