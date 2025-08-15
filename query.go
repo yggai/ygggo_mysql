@@ -11,8 +11,8 @@ import (
 // Exec executes a statement using the underlying connection.
 func (c *Conn) Exec(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	if c == nil || c.inner == nil { return nil, sql.ErrConnDone }
-	if c.p != nil && c.p.telemetryEnabled {
-		return c.p.instrumentedExec(ctx, c.inner, query, args...)
+	if c.p != nil && (c.p.telemetryEnabled || c.p.metricsEnabled) {
+		return c.p.instrumentedExecWithMetrics(ctx, c.inner, query, args...)
 	}
 	return c.inner.ExecContext(ctx, query, args...)
 }
@@ -20,8 +20,8 @@ func (c *Conn) Exec(ctx context.Context, query string, args ...any) (sql.Result,
 // Query runs a query and returns rows.
 func (c *Conn) Query(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	if c == nil || c.inner == nil { return nil, sql.ErrConnDone }
-	if c.p != nil && c.p.telemetryEnabled {
-		return c.p.instrumentedQuery(ctx, c.inner, query, args...)
+	if c.p != nil && (c.p.telemetryEnabled || c.p.metricsEnabled) {
+		return c.p.instrumentedQueryWithMetrics(ctx, c.inner, query, args...)
 	}
 	return c.inner.QueryContext(ctx, query, args...)
 }

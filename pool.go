@@ -6,6 +6,8 @@ import (
 	"errors"
 	"sync/atomic"
 	"time"
+
+	"go.opentelemetry.io/otel/metric"
 )
 
 // Pool is a placeholder wrapper over *sql.DB based pool.
@@ -19,6 +21,10 @@ type Pool struct {
 	retry RetryPolicy
 	// telemetry
 	telemetryEnabled bool
+	// metrics
+	metricsEnabled bool
+	meterProvider  metric.MeterProvider
+	metrics        *Metrics
 }
 
 // SetBorrowWarnThreshold sets the warn threshold for held connections.

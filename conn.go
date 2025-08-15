@@ -59,6 +59,10 @@ func (p *Pool) Acquire(ctx context.Context) (DatabaseConn, error) {
 	if err != nil { return nil, err }
 	conn := &Conn{inner: c, p: p}
 	conn.markAcquired()
+	// Record connection acquisition for metrics
+	if p.metricsEnabled {
+		p.recordConnectionAcquired(ctx)
+	}
 	return conn, nil
 }
 
@@ -72,6 +76,16 @@ func (c *Conn) markAcquired() {
 // Close returns the connection to the pool.
 func (c *Conn) Close() error {
 	if c == nil || c.inner == nil { return nil }
+
+	// Record connection release for metrics (using a separate goroutine to avoid deadlock)
+	if c.p != nil && c.p.metricsEnabled && c.acqNS > 0 {
+		duration := time.Duration(time.Now().UnixNano() - c.acqNS)
+		// Use a goroutine to avoid blocking the close operation
+		go func() {
+			c.p.recordConnectionReleased(context.Background(), duration)
+		}()
+	}
+
 	c.p.onReturn()
 	if c.cache != nil { c.cache.closeAll() }
 	return c.inner.Close()

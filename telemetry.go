@@ -56,19 +56,20 @@ func (p *Pool) startSpan(ctx context.Context, operation string, query string) (c
 }
 
 // finishSpan completes a span with error handling
-func (p *Pool) finishSpan(span trace.Span, err error) {
-	if p == nil || !p.telemetryEnabled {
+func (p *Pool) finishSpan(span interface{}, err error) {
+	if p == nil || !p.telemetryEnabled || span == nil {
 		return
 	}
 
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-	} else {
-		span.SetStatus(codes.Ok, "")
+	if traceSpan, ok := span.(trace.Span); ok {
+		if err != nil {
+			traceSpan.RecordError(err)
+			traceSpan.SetStatus(codes.Error, err.Error())
+		} else {
+			traceSpan.SetStatus(codes.Ok, "")
+		}
+		traceSpan.End()
 	}
-
-	span.End()
 }
 
 // instrumentedQuery wraps query execution with tracing

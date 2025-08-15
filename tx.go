@@ -31,6 +31,7 @@ func (tx *Tx) Exec(ctx context.Context, query string, args ...any) (sql.Result, 
 func (p *Pool) WithinTx(ctx context.Context, fn func(DatabaseTx) error, opts ...any) error {
 	if p == nil || p.db == nil { return errors.New("nil pool") }
 
+	start := time.Now()
 	var span trace.Span
 	if p.telemetryEnabled {
 		ctx, span = p.startSpan(ctx, "transaction", "")
@@ -50,6 +51,12 @@ func (p *Pool) WithinTx(ctx context.Context, fn func(DatabaseTx) error, opts ...
 	}
 
 	err := retryWithPolicy(ctx, p.retry, op, Classify)
+
+	// Record metrics
+	if p.metricsEnabled {
+		duration := time.Since(start)
+		p.recordTransaction(ctx, duration, err)
+	}
 
 	if p.telemetryEnabled {
 		p.finishSpan(span, err)

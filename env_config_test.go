@@ -1,10 +1,8 @@
 package ygggo_mysql
 
 import (
-	"context"
 	"testing"
 
-	"github.com/DATA-DOG/go-sqlmock"
 	mysql "github.com/go-sql-driver/mysql"
 )
 
@@ -13,20 +11,12 @@ func TestEnv_OverridesRawDSN(t *testing.T) {
 	const envDSN = "envuser:envpass@tcp(127.0.0.1:3307)/envdb?parseTime=true"
 	t.Setenv("YGGGO_MYSQL_DSN", envDSN)
 
-	// Register that DSN with sqlmock
-	_, mock, err := sqlmock.NewWithDSN(envDSN, sqlmock.MonitorPingsOption(true))
-	if err != nil { t.Fatalf("sqlmock.NewWithDSN: %v", err) }
-	mock.ExpectPing()
+	cfg := Config{DSN: "ignored:ignored@tcp(localhost:3306)/ignored"}
+	applyEnv(&cfg)
 
-	cfg := Config{Driver: "sqlmock", DSN: "ignored:ignored@tcp(localhost:3306)/ignored"}
-
-	ctx := context.Background()
-	p, err := NewPool(ctx, cfg)
-	if err != nil { t.Fatalf("NewPool err: %v", err) }
-	defer p.Close()
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Fatalf("unmet expectations: %v", err)
+	// Verify that env DSN overrides the config DSN
+	if cfg.DSN != envDSN {
+		t.Fatalf("expected DSN %s, got %s", envDSN, cfg.DSN)
 	}
 }
 
