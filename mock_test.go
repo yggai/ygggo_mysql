@@ -3,8 +3,6 @@ package ygggo_mysql
 import (
 	"context"
 	"testing"
-
-	"github.com/DATA-DOG/go-sqlmock"
 )
 
 func TestNewMockPool_CreatesPoolWithMockDB(t *testing.T) {
@@ -24,7 +22,9 @@ func TestNewMockPool_WithConnAndQuery(t *testing.T) {
 	if err != nil { t.Fatalf("NewMockPool: %v", err) }
 	defer pool.Close()
 
-	mock.ExpectQuery(`SELECT 1`).WillReturnRows(sqlmock.NewRows([]string{"c"}).AddRow(1))
+	rows := NewRows([]string{"c"})
+	rows = AddRow(rows, 1)
+	mock.ExpectQuery(`SELECT 1`).WillReturnRows(rows)
 	err = pool.WithConn(ctx, func(c DatabaseConn) error {
 		rs, err := c.Query(ctx, "SELECT 1")
 		if err != nil { return err }
@@ -45,7 +45,7 @@ func TestNewMockPool_WithinTx(t *testing.T) {
 	defer pool.Close()
 
 	mock.ExpectBegin()
-	mock.ExpectExec(`INSERT INTO t\(a\) VALUES\(\?\)`).WithArgs(1).WillReturnResult(sqlmock.NewResult(1,1))
+	mock.ExpectExec(`INSERT INTO t\(a\) VALUES\(\?\)`).WithArgs(1).WillReturnResult(NewResult(1,1))
 	mock.ExpectCommit()
 
 	err = pool.WithinTx(ctx, func(tx DatabaseTx) error {
@@ -64,7 +64,7 @@ func TestNewMockPool_BulkInsert(t *testing.T) {
 
 	mock.ExpectExec(`INSERT INTO t \(a,b\) VALUES \(\?,\?\),\(\?,\?\)`).
 		WithArgs(1, "x", 2, "y").
-		WillReturnResult(sqlmock.NewResult(0, 2))
+		WillReturnResult(NewResult(0, 2))
 
 	err = pool.WithConn(ctx, func(c DatabaseConn) error {
 		rows := [][]any{{1, "x"}, {2, "y"}}
@@ -81,7 +81,7 @@ func TestNewMockPool_NamedExec(t *testing.T) {
 	if err != nil { t.Fatalf("NewMockPool: %v", err) }
 	defer pool.Close()
 
-	mock.ExpectExec(`INSERT INTO t \(a,b\) VALUES \(\?,\?\)`).WithArgs(1, "x").WillReturnResult(sqlmock.NewResult(1,1))
+	mock.ExpectExec(`INSERT INTO t \(a,b\) VALUES \(\?,\?\)`).WithArgs(1, "x").WillReturnResult(NewResult(1,1))
 
 	err = pool.WithConn(ctx, func(c DatabaseConn) error {
 		_, err := c.NamedExec(ctx, "INSERT INTO t (a,b) VALUES (:a,:b)", map[string]any{"a": 1, "b": "x"})

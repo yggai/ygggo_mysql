@@ -2,10 +2,10 @@ package ygggo_mysql
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
-	"github.com/DATA-DOG/go-sqlmock"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
@@ -121,7 +121,8 @@ func TestMetrics_NoMock_ErrorRecording(t *testing.T) {
 	ctx := context.Background()
 
 	// Record an error operation
-	pool.recordQuery(ctx, "query", 100*time.Microsecond, sqlmock.ErrCancelled)
+	testError := errors.New("test cancelled error")
+	pool.recordQuery(ctx, "query", 100*time.Microsecond, testError)
 
 	// Collect metrics
 	rm := metricdata.ResourceMetrics{}

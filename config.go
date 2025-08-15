@@ -20,7 +20,7 @@ type PoolConfig struct {
 
 // Config holds library configuration (placeholders).
 type Config struct {
-	// Driver allows overriding the sql driver (e.g., "mysql" in prod, "sqlmock" in tests).
+	// Driver allows overriding the sql driver (e.g., "mysql" in prod, "sqlite" in tests).
 	Driver             string
 	DSN                string
 	// Field-based DSN building (used when DSN is empty)
