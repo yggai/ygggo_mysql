@@ -17,6 +17,8 @@ type Pool struct {
 	leakHandler  atomic.Value // func(BorrowLeak)
 	// retry policy
 	retry RetryPolicy
+	// telemetry
+	telemetryEnabled bool
 }
 
 // SetBorrowWarnThreshold sets the warn threshold for held connections.

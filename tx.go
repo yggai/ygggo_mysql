@@ -5,26 +5,41 @@ import (
 	"database/sql"
 	"errors"
 	"time"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Tx wraps *sql.Tx and shares some methods with Conn.
 type Tx struct{
 	inner *sql.Tx
+	pool  *Pool
 }
 
 // Exec executes within the transaction.
 func (tx *Tx) Exec(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	if tx == nil || tx.inner == nil { return nil, sql.ErrTxDone }
+	if tx.pool != nil && tx.pool.telemetryEnabled {
+		ctx, span := tx.pool.startSpan(ctx, "exec", query)
+		result, err := tx.inner.ExecContext(ctx, query, args...)
+		tx.pool.finishSpan(span, err)
+		return result, err
+	}
 	return tx.inner.ExecContext(ctx, query, args...)
 }
 
 // WithinTx executes fn within a transaction using retryWithPolicy for retryable errors.
 func (p *Pool) WithinTx(ctx context.Context, fn func(DatabaseTx) error, opts ...any) error {
 	if p == nil || p.db == nil { return errors.New("nil pool") }
+
+	var span trace.Span
+	if p.telemetryEnabled {
+		ctx, span = p.startSpan(ctx, "transaction", "")
+	}
+
 	op := func() error {
 		tx, err := p.db.BeginTx(ctx, nil)
 		if err != nil { return err }
-		wrap := &Tx{inner: tx}
+		wrap := &Tx{inner: tx, pool: p}
 		err = fn(wrap)
 		if err == nil {
 			if cerr := tx.Commit(); cerr != nil { return cerr }
@@ -33,7 +48,14 @@ func (p *Pool) WithinTx(ctx context.Context, fn func(DatabaseTx) error, opts ...
 		_ = tx.Rollback()
 		return err
 	}
-	return retryWithPolicy(ctx, p.retry, op, Classify)
+
+	err := retryWithPolicy(ctx, p.retry, op, Classify)
+
+	if p.telemetryEnabled {
+		p.finishSpan(span, err)
+	}
+
+	return err
 }
 
 func isRetryable(err error) bool {
