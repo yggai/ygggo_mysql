@@ -6,12 +6,19 @@ import (
 )
 
 func TestBulkInsert_Simple(t *testing.T) {
-	helper := NewTestHelper(t)
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
+	helper, err := NewDockerTestHelper(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer helper.Close()
 
-	err := helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
-		// Create test table
-		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INTEGER PRIMARY KEY, a INTEGER, b TEXT)")
+	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		// Create test table (MySQL syntax)
+		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INT AUTO_INCREMENT PRIMARY KEY, a INT, b TEXT)")
 		if err != nil { return err }
 
 		// Test bulk insert
@@ -39,16 +46,41 @@ func TestBulkInsert_Simple(t *testing.T) {
 }
 
 func TestInsertOnDuplicate_Simple(t *testing.T) {
-	// Skip this test for SQLite as it uses MySQL-specific ON DUPLICATE KEY UPDATE syntax
-	// TODO: Implement SQLite-compatible version using INSERT OR REPLACE
-	t.Skip("InsertOnDuplicate uses MySQL-specific syntax, skipping for SQLite")
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
+	helper, err := NewDockerTestHelper(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer helper.Close()
+
+	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		// Create test table with unique constraint
+		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INT AUTO_INCREMENT PRIMARY KEY, a INT UNIQUE, b TEXT)")
+		if err != nil { return err }
+
+		// Test INSERT ON DUPLICATE KEY UPDATE
+		rows := [][]any{{1, "x"}, {1, "y"}} // Duplicate key
+		_, err = c.InsertOnDuplicate(context.Background(), "t", []string{"a", "b"}, rows, []string{"b"})
+		return err
+	})
+	if err != nil { t.Fatalf("WithConn: %v", err) }
 }
 
 func TestBulkInsert_EmptyRows_Error(t *testing.T) {
-	helper := NewTestHelper(t)
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
+	helper, err := NewDockerTestHelper(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer helper.Close()
 
-	err := helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
 		_, err := c.BulkInsert(context.Background(), "t", []string{"a"}, nil)
 		if err == nil { t.Fatalf("expected error for empty rows") }
 		return nil
@@ -57,10 +89,17 @@ func TestBulkInsert_EmptyRows_Error(t *testing.T) {
 }
 
 func TestBulkInsert_ColumnMismatch_Error(t *testing.T) {
-	helper := NewTestHelper(t)
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
+	helper, err := NewDockerTestHelper(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer helper.Close()
 
-	err := helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
 		rows := [][]any{{1, "x"}, {2}} // mismatch for second row
 		_, err := c.BulkInsert(context.Background(), "t", []string{"a", "b"}, rows)
 		if err == nil { t.Fatalf("expected error for mismatch columns") }

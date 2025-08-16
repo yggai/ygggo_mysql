@@ -7,7 +7,14 @@ import (
 )
 
 func TestLeakDetection_ReportsWhenHeldBeyondThreshold(t *testing.T) {
-	helper := NewTestHelper(t)
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
+	helper, err := NewDockerTestHelper(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer helper.Close()
 
 	p := helper.Pool()
@@ -34,7 +41,14 @@ func TestLeakDetection_ReportsWhenHeldBeyondThreshold(t *testing.T) {
 }
 
 func TestLeakDetection_NoReportWhenWithinThreshold(t *testing.T) {
-	helper := NewTestHelper(t)
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
+	helper, err := NewDockerTestHelper(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer helper.Close()
 
 	p := helper.Pool()
@@ -43,7 +57,7 @@ func TestLeakDetection_NoReportWhenWithinThreshold(t *testing.T) {
 	ch := make(chan BorrowLeak, 1)
 	p.SetLeakHandler(func(info BorrowLeak){ ch <- info })
 
-	err := p.WithConn(context.Background(), func(c DatabaseConn) error {
+	err = p.WithConn(context.Background(), func(c DatabaseConn) error {
 		time.Sleep(10 * time.Millisecond)
 		return nil
 	})

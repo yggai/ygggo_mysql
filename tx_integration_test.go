@@ -6,12 +6,19 @@ import (
 )
 
 func TestWithinTx_Retry_DeadlockThenSuccess(t *testing.T) {
-	helper := NewTestHelper(t)
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
+	helper, err := NewDockerTestHelper(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer helper.Close()
 
 	// Create test table and initial data
-	err := helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
-		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INTEGER PRIMARY KEY, a INTEGER)")
+	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INT AUTO_INCREMENT PRIMARY KEY, a INT)")
 		if err != nil { return err }
 		_, err = c.Exec(context.Background(), "INSERT INTO t (id, a) VALUES (1, 1)")
 		return err
@@ -29,12 +36,19 @@ func TestWithinTx_Retry_DeadlockThenSuccess(t *testing.T) {
 }
 
 func TestWithinTx_Retry_ReadOnlyThenSuccess(t *testing.T) {
-	helper := NewTestHelper(t)
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
+	helper, err := NewDockerTestHelper(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer helper.Close()
 
 	// Create test table
-	err := helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
-		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INTEGER PRIMARY KEY, a INTEGER)")
+	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INT AUTO_INCREMENT PRIMARY KEY, a INT)")
 		return err
 	})
 	if err != nil { t.Fatalf("Setup failed: %v", err) }

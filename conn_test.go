@@ -8,7 +8,14 @@ import (
 )
 
 func TestWithConn_AutoReturnAndFnError(t *testing.T) {
-	helper := NewTestHelper(t)
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
+	helper, err := NewDockerTestHelper(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer helper.Close()
 
 	p := helper.Pool()
@@ -17,7 +24,7 @@ func TestWithConn_AutoReturnAndFnError(t *testing.T) {
 	release := make(chan struct{})
 	done := make(chan struct{})
 	go func() {
-		_ = p.WithConn(context.Background(), func(c DatabaseConn) error {
+		err = p.WithConn(context.Background(), func(c DatabaseConn) error {
 			<-release // hold connection
 			return nil
 		})

@@ -26,15 +26,15 @@ func (t *SelectBenchmarkTest) Name() string {
 
 func (t *SelectBenchmarkTest) Setup(ctx context.Context, pool DatabasePool) error {
 	return pool.WithConn(ctx, func(conn DatabaseConn) error {
-		// Create table
+		// Create table (MySQL syntax)
 		_, err := conn.Exec(ctx, fmt.Sprintf(`
 			CREATE TABLE IF NOT EXISTS %s (
-				id INTEGER PRIMARY KEY,
-				name TEXT,
-				email TEXT,
-				age INTEGER,
-				score REAL,
-				created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+				id INT AUTO_INCREMENT PRIMARY KEY,
+				name VARCHAR(255),
+				email VARCHAR(255),
+				age INT,
+				score DECIMAL(10,2),
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 			)
 		`, t.TableName))
 		if err != nil {
@@ -135,10 +135,10 @@ func (t *InsertPerformanceBenchmarkTest) Setup(ctx context.Context, pool Databas
 	return pool.WithConn(ctx, func(conn DatabaseConn) error {
 		_, err := conn.Exec(ctx, fmt.Sprintf(`
 			CREATE TABLE IF NOT EXISTS %s (
-				id INTEGER PRIMARY KEY,
+				id INT AUTO_INCREMENT PRIMARY KEY,
 				data TEXT,
-				value INTEGER,
-				timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+				value INT,
+				timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 			)
 		`, t.TableName))
 		return err
@@ -201,12 +201,12 @@ func (t *UpdateBenchmarkTest) Setup(ctx context.Context, pool DatabasePool) erro
 		// Drop table first to ensure clean state
 		_, _ = conn.Exec(ctx, fmt.Sprintf("DROP TABLE IF EXISTS %s", t.TableName))
 
-		// Create table
+		// Create table (MySQL syntax)
 		_, err := conn.Exec(ctx, fmt.Sprintf(`
 			CREATE TABLE %s (
-				id INTEGER PRIMARY KEY,
-				counter INTEGER DEFAULT 0,
-				last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
+				id INT AUTO_INCREMENT PRIMARY KEY,
+				counter INT DEFAULT 0,
+				last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 			)
 		`, t.TableName))
 		if err != nil {
@@ -283,20 +283,20 @@ func (t *BulkOperationBenchmarkTest) Setup(ctx context.Context, pool DatabasePoo
 		// Drop table first to ensure clean state
 		_, _ = conn.Exec(ctx, fmt.Sprintf("DROP TABLE IF EXISTS %s", t.TableName))
 
-		// Create table
+		// Create table (MySQL syntax)
 		_, err := conn.Exec(ctx, fmt.Sprintf(`
 			CREATE TABLE %s (
-				id INTEGER PRIMARY KEY,
-				name TEXT,
-				value INTEGER
+				id INT AUTO_INCREMENT PRIMARY KEY,
+				name VARCHAR(255),
+				value INT
 			)
 		`, t.TableName))
 		if err != nil {
 			return fmt.Errorf("failed to create table %s: %w", t.TableName, err)
 		}
 
-		// Verify table exists
-		rows, err := conn.Query(ctx, fmt.Sprintf("SELECT name FROM sqlite_master WHERE type='table' AND name='%s'", t.TableName))
+		// Verify table exists (MySQL syntax)
+		rows, err := conn.Query(ctx, fmt.Sprintf("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '%s'", t.TableName))
 		if err != nil {
 			return fmt.Errorf("failed to verify table creation: %w", err)
 		}
@@ -374,12 +374,12 @@ func (t *MixedWorkloadBenchmarkTest) Setup(ctx context.Context, pool DatabasePoo
 		// Drop table first to ensure clean state
 		_, _ = conn.Exec(ctx, fmt.Sprintf("DROP TABLE IF EXISTS %s", t.TableName))
 
-		// Create table
+		// Create table (MySQL syntax)
 		_, err := conn.Exec(ctx, fmt.Sprintf(`
 			CREATE TABLE %s (
-				id INTEGER PRIMARY KEY,
+				id INT AUTO_INCREMENT PRIMARY KEY,
 				data TEXT,
-				counter INTEGER DEFAULT 0
+				counter INT DEFAULT 0
 			)
 		`, t.TableName))
 		if err != nil {

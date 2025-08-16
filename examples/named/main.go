@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/yggai/ygggo_mysql"
 )
@@ -16,29 +17,39 @@ type User struct {
 func main() {
 	ctx := context.Background()
 
-	pool, mock, err := ygggo_mysql.NewPoolWithMock(ctx, ygggo_mysql.Config{}, true)
-	if err != nil { log.Fatalf("NewPoolWithMock: %v", err) }
+	// 从环境变量获取数据库配置，或使用默认值
+	config := ygggo_mysql.Config{
+		Host:     getEnv("DB_HOST", "localhost"),
+		Port:     3306,
+		Database: getEnv("DB_NAME", "test"),
+		Username: getEnv("DB_USER", "root"),
+		Password: getEnv("DB_PASSWORD", "password"),
+	}
+
+	// 创建连接池
+	pool, err := ygggo_mysql.NewPool(ctx, config)
+	if err != nil {
+		log.Fatalf("NewPool: %v", err)
+	}
 	defer pool.Close()
 
-	if mock != nil {
-		// NamedExec with struct
-		mock.ExpectExec(`INSERT INTO users \(id,name\) VALUES \(\?,\?\)`).WithArgs(1, "Alice").WillReturnResult(ygggo_mysql.NewResult(1, 1))
+	// 设置测试数据
+	err = pool.WithConn(ctx, func(c ygggo_mysql.DatabaseConn) error {
+		// 创建测试表
+		_, err := c.Exec(ctx, `CREATE TABLE IF NOT EXISTS users (
+			id INT PRIMARY KEY,
+			name VARCHAR(100),
+			active BOOLEAN DEFAULT TRUE
+		)`)
+		if err != nil { return err }
 
-		// NamedExec with slice of structs (executed individually)
-		mock.ExpectExec(`INSERT INTO users \(id,name\) VALUES \(\?,\?\)`).WithArgs(2, "Bob").WillReturnResult(ygggo_mysql.NewResult(2, 1))
-		mock.ExpectExec(`INSERT INTO users \(id,name\) VALUES \(\?,\?\)`).WithArgs(3, "Charlie").WillReturnResult(ygggo_mysql.NewResult(3, 1))
+		// 清理数据
+		_, err = c.Exec(ctx, "DELETE FROM users")
+		if err != nil { return err }
 
-		// NamedQuery with map
-		rows1 := ygggo_mysql.NewRows([]string{"id", "name"})
-		rows1 = ygggo_mysql.AddRow(rows1, 1, "Alice")
-		mock.ExpectQuery(`SELECT \* FROM users WHERE id=\?`).WithArgs(1).WillReturnRows(rows1)
-
-		// BuildIn helper
-		rows2 := ygggo_mysql.NewRows([]string{"id", "name"})
-		rows2 = ygggo_mysql.AddRow(rows2, 1, "Alice")
-		rows2 = ygggo_mysql.AddRow(rows2, 2, "Bob")
-		mock.ExpectQuery(`SELECT \* FROM users WHERE id IN \(\?,\?,\?\) AND active=\?`).WithArgs(1, 2, 3, true).WillReturnRows(rows2)
-	}
+		return nil
+	})
+	if err != nil { log.Fatalf("Setup: %v", err) }
 
 	err = pool.WithConn(ctx, func(c ygggo_mysql.DatabaseConn) error {
 		// Single struct
@@ -75,8 +86,13 @@ func main() {
 	})
 	if err != nil { log.Fatalf("WithConn: %v", err) }
 
-	if mock != nil {
-		if err := mock.ExpectationsWereMet(); err != nil { log.Fatalf("expectations: %v", err) }
+	fmt.Println("ygggo_mysql example: named parameters & BuildIn", ygggo_mysql.Version())
+}
+
+// getEnv 获取环境变量，如果不存在则返回默认值
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
 	}
-	fmt.Println("ygggo_mysql example: named parameters & BuildIn")
+	return defaultValue
 }

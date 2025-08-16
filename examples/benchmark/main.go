@@ -14,10 +14,13 @@ import (
 func main() {
 	ctx := context.Background()
 
-	// Create a SQLite test helper for demonstration
-	helper, err := ygggo_mysql.NewSQLiteTestHelper(ctx)
+	// 注意：这个示例需要Docker环境来运行MySQL容器
+	// 在生产环境中，你应该使用真实的MySQL连接配置
+
+	// 创建Docker测试助手用于演示
+	helper, err := ygggo_mysql.NewDockerTestHelper(ctx)
 	if err != nil {
-		log.Fatal("Failed to create SQLite helper:", err)
+		log.Fatal("Failed to create Docker helper (需要Docker环境):", err)
 	}
 	defer helper.Close()
 

@@ -6,13 +6,20 @@ import (
 )
 
 func TestConn_Exec_Success(t *testing.T) {
-	helper := NewTestHelper(t)
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
+	helper, err := NewDockerTestHelper(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer helper.Close()
 
 	// Do everything in a single WithConn to avoid nesting
-	err := helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
-		// Create table
-		_, err := c.Exec(context.Background(), "CREATE TABLE test_table (id INTEGER PRIMARY KEY, a INTEGER, b TEXT)")
+	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		// Create table (MySQL syntax)
+		_, err := c.Exec(context.Background(), "CREATE TABLE test_table (id INT AUTO_INCREMENT PRIMARY KEY, a INT, b TEXT)")
 		if err != nil { return err }
 
 		// Insert data
@@ -42,13 +49,20 @@ func TestConn_Exec_Success(t *testing.T) {
 }
 
 func TestConn_Query_And_Stream(t *testing.T) {
-	helper := NewTestHelper(t)
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
+	helper, err := NewDockerTestHelper(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer helper.Close()
 
 	// Do everything in a single WithConn to avoid nesting
-	err := helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
-		// Create test table
-		_, err := c.Exec(context.Background(), "CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT)")
+	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		// Create test table (MySQL syntax)
+		_, err := c.Exec(context.Background(), "CREATE TABLE test_table (id INT AUTO_INCREMENT PRIMARY KEY, name TEXT)")
 		if err != nil { return err }
 
 		// Insert test data

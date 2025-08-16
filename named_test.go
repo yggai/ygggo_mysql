@@ -12,12 +12,19 @@ type row struct {
 }
 
 func TestNamedExec_WithStruct(t *testing.T) {
-	helper := NewTestHelper(t)
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
+	helper, err := NewDockerTestHelper(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer helper.Close()
 
-	err := helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
-		// Create test table
-		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INTEGER PRIMARY KEY, a INTEGER, b TEXT)")
+	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		// Create test table (MySQL syntax)
+		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INT AUTO_INCREMENT PRIMARY KEY, a INT, b TEXT)")
 		if err != nil { return err }
 
 		// Test named exec with struct
@@ -43,12 +50,19 @@ func TestNamedExec_WithStruct(t *testing.T) {
 }
 
 func TestNamedExec_WithSliceStructs(t *testing.T) {
-	helper := NewTestHelper(t)
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
+	helper, err := NewDockerTestHelper(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer helper.Close()
 
-	err := helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
-		// Create test table
-		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INTEGER PRIMARY KEY, a INTEGER, b TEXT)")
+	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		// Create test table (MySQL syntax)
+		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INT AUTO_INCREMENT PRIMARY KEY, a INT, b TEXT)")
 		if err != nil { return err }
 
 		// Test named exec with slice of structs
@@ -74,12 +88,19 @@ func TestNamedExec_WithSliceStructs(t *testing.T) {
 }
 
 func TestNamedQuery_WithMap(t *testing.T) {
-	helper := NewTestHelper(t)
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
+	helper, err := NewDockerTestHelper(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer helper.Close()
 
-	err := helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
-		// Create test table and insert data
-		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INTEGER PRIMARY KEY)")
+	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		// Create test table and insert data (MySQL syntax)
+		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INT AUTO_INCREMENT PRIMARY KEY)")
 		if err != nil { return err }
 		_, err = c.Exec(context.Background(), "INSERT INTO t (id) VALUES (42)")
 		if err != nil { return err }
@@ -101,12 +122,19 @@ func TestNamedQuery_WithMap(t *testing.T) {
 }
 
 func TestIn_Helper_ExpandsSlice(t *testing.T) {
-	helper := NewTestHelper(t)
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
+	helper, err := NewDockerTestHelper(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer helper.Close()
 
-	err := helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
-		// Create test table and insert data
-		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INTEGER PRIMARY KEY, kind TEXT)")
+	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		// Create test table and insert data (MySQL syntax)
+		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INT AUTO_INCREMENT PRIMARY KEY, kind TEXT)")
 		if err != nil { return err }
 		_, err = c.Exec(context.Background(), "INSERT INTO t (id, kind) VALUES (1, 'a'), (2, 'a'), (3, 'a')")
 		if err != nil { return err }

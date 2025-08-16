@@ -17,8 +17,17 @@ func main() {
 		Level: slog.LevelDebug,
 	}))
 
-	// Create pool with mock
-	pool, mock, err := ygggo_mysql.NewPoolWithMock(ctx, ygggo_mysql.Config{}, true)
+	// 从环境变量获取数据库配置，或使用默认值
+	config := ygggo_mysql.Config{
+		Host:     getEnv("DB_HOST", "localhost"),
+		Port:     3306,
+		Database: getEnv("DB_NAME", "test"),
+		Username: getEnv("DB_USER", "root"),
+		Password: getEnv("DB_PASSWORD", "password"),
+	}
+
+	// 创建连接池
+	pool, err := ygggo_mysql.NewPool(ctx, config)
 	if err != nil {
 		logger.Error("failed to create pool", "error", err)
 		return
@@ -32,29 +41,33 @@ func main() {
 
 	logger.Info("ygggo_mysql structured logging example started")
 
-	// Setup mock expectations
-	if mock != nil {
-		// Fast query
-		rows := ygggo_mysql.NewRows([]string{"id", "name"})
-		rows = ygggo_mysql.AddRow(rows, 1, "Alice")
-		rows = ygggo_mysql.AddRow(rows, 2, "Bob")
-		mock.ExpectQuery(`SELECT id, name FROM users WHERE active = \?`).WithArgs(true).WillReturnRows(rows)
-		
-		// Slow query (will be logged as warning)
-		slowRows := ygggo_mysql.NewRows([]string{"count"})
-		slowRows = ygggo_mysql.AddRow(slowRows, 1000)
-		mock.ExpectQuery(`SELECT COUNT\(\*\) FROM large_table`).WillReturnRows(slowRows)
-		
-		// Insert operation
-		mock.ExpectExec(`INSERT INTO users \(name, email\) VALUES \(\?, \?\)`).
-			WithArgs("Charlie", "charlie@example.com").
-			WillReturnResult(ygggo_mysql.NewResult(3, 1))
-		
-		// Transaction
-		mock.ExpectBegin()
-		mock.ExpectExec(`UPDATE users SET last_login = NOW\(\) WHERE id = \?`).WithArgs(1).
-			WillReturnResult(ygggo_mysql.NewResult(0, 1))
-		mock.ExpectCommit()
+	// 设置测试数据
+	err = pool.WithConn(ctx, func(c ygggo_mysql.DatabaseConn) error {
+		// 创建测试表
+		_, err := c.Exec(ctx, `CREATE TABLE IF NOT EXISTS users (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			name VARCHAR(100),
+			email VARCHAR(100),
+			active BOOLEAN DEFAULT TRUE,
+			last_login TIMESTAMP NULL
+		)`)
+		if err != nil { return err }
+
+		// 清理并插入测试数据
+		_, err = c.Exec(ctx, "DELETE FROM users")
+		if err != nil { return err }
+
+		_, err = c.Exec(ctx, "INSERT INTO users (name, email, active) VALUES (?, ?, ?)", "Alice", "alice@example.com", true)
+		if err != nil { return err }
+
+		_, err = c.Exec(ctx, "INSERT INTO users (name, email, active) VALUES (?, ?, ?)", "Bob", "bob@example.com", true)
+		if err != nil { return err }
+
+		return nil
+	})
+	if err != nil {
+		logger.Error("failed to setup test data", "error", err)
+		return
 	}
 
 	logger.Info("executing database operations with structured logging")
@@ -79,18 +92,18 @@ func main() {
 	for rs.Next() { count++ }
 	logger.Info("fast query completed", "rows_returned", count)
 
-	// 2. Slow query - will be logged at WARN level due to threshold
+	// 2. 模拟慢查询 - 使用SLEEP函数
 	logger.Info("executing slow query")
-	rs2, err := conn.Query(ctx, "SELECT COUNT(*) FROM large_table")
+	rs2, err := conn.Query(ctx, "SELECT SLEEP(0.2), COUNT(*) FROM users")
 	if err != nil {
 		logger.Error("slow query failed", "error", err)
 		return
 	}
 	defer rs2.Close()
 
-	var totalCount int
+	var sleepResult, totalCount int
 	if rs2.Next() {
-		rs2.Scan(&totalCount)
+		rs2.Scan(&sleepResult, &totalCount)
 	}
 	logger.Info("slow query completed", "total_count", totalCount)
 
@@ -134,13 +147,14 @@ func main() {
 		"max_idle", stats.MaxIdle,
 	)
 
-	if mock != nil {
-		if err := mock.ExpectationsWereMet(); err != nil {
-			logger.Error("mock expectations not met", "error", err)
-			return
-		}
-	}
-
-	logger.Info("ygggo_mysql structured logging example completed successfully")
+	logger.Info("ygggo_mysql structured logging example completed successfully", "version", ygggo_mysql.Version())
 	logger.Info("check the JSON logs above for detailed operation information")
+}
+
+// getEnv 获取环境变量，如果不存在则返回默认值
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }

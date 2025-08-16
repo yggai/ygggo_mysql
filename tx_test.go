@@ -7,12 +7,19 @@ import (
 )
 
 func TestWithinTx_CommitOnSuccess(t *testing.T) {
-	helper := NewTestHelper(t)
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
+	helper, err := NewDockerTestHelper(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer helper.Close()
 
-	err := helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
-		// Create test table
-		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INTEGER PRIMARY KEY, a INTEGER)")
+	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		// Create test table (MySQL syntax)
+		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INT AUTO_INCREMENT PRIMARY KEY, a INT)")
 		return err
 	})
 	if err != nil { t.Fatalf("Setup failed: %v", err) }
@@ -24,16 +31,35 @@ func TestWithinTx_CommitOnSuccess(t *testing.T) {
 	if err != nil { t.Fatalf("WithinTx err: %v", err) }
 
 	// Verify data was committed
-	helper.AssertRowCount("t", 1)
+	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		rows, err := c.Query(context.Background(), "SELECT COUNT(*) FROM t")
+		if err != nil { return err }
+		defer rows.Close()
+
+		if rows.Next() {
+			var count int
+			if err := rows.Scan(&count); err != nil { return err }
+			if count != 1 { t.Errorf("expected 1 row, got %d", count) }
+		}
+		return rows.Err()
+	})
+	if err != nil { t.Fatalf("count check: %v", err) }
 }
 
 func TestWithinTx_RollbackOnFnError(t *testing.T) {
-	helper := NewTestHelper(t)
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
+	helper, err := NewDockerTestHelper(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer helper.Close()
 
-	err := helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
-		// Create test table
-		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INTEGER PRIMARY KEY, a INTEGER)")
+	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		// Create test table (MySQL syntax)
+		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INT AUTO_INCREMENT PRIMARY KEY, a INT)")
 		return err
 	})
 	if err != nil { t.Fatalf("Setup failed: %v", err) }
@@ -43,16 +69,35 @@ func TestWithinTx_RollbackOnFnError(t *testing.T) {
 	if !errors.Is(err, sentinel) { t.Fatalf("expected sentinel, got %v", err) }
 
 	// Verify no data was committed (rollback worked)
-	helper.AssertRowCount("t", 0)
+	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		rows, err := c.Query(context.Background(), "SELECT COUNT(*) FROM t")
+		if err != nil { return err }
+		defer rows.Close()
+
+		if rows.Next() {
+			var count int
+			if err := rows.Scan(&count); err != nil { return err }
+			if count != 0 { t.Errorf("expected 0 rows, got %d", count) }
+		}
+		return rows.Err()
+	})
+	if err != nil { t.Fatalf("count check: %v", err) }
 }
 
 func TestWithinTx_RetryOnDeadlock(t *testing.T) {
-	helper := NewTestHelper(t)
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
+	helper, err := NewDockerTestHelper(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer helper.Close()
 
-	err := helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
-		// Create test table and insert initial data
-		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INTEGER PRIMARY KEY, a INTEGER)")
+	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		// Create test table and insert initial data (MySQL syntax)
+		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INT AUTO_INCREMENT PRIMARY KEY, a INT)")
 		if err != nil { return err }
 		_, err = c.Exec(context.Background(), "INSERT INTO t (id, a) VALUES (1, 1)")
 		return err

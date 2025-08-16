@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/yggai/ygggo_mysql"
 )
@@ -11,40 +12,56 @@ import (
 func main() {
 	ctx := context.Background()
 
-	pool, mock, err := ygggo_mysql.NewPoolWithMock(ctx, ygggo_mysql.Config{}, true)
-	if err != nil { log.Fatalf("NewPoolWithMock: %v", err) }
-	defer pool.Close()
-
-	if mock != nil {
-		// BulkInsert: expect multi-values insert
-		mock.ExpectExec(`INSERT INTO t \(a,b\) VALUES \(\?,\?\),\(\?,\?\)`).
-			WithArgs(1, "x", 2, "y").
-			WillReturnResult(ygggo_mysql.NewResult(0, 2))
-
-		// Upsert: ON DUPLICATE KEY UPDATE b=VALUES(b)
-		mock.ExpectExec(`INSERT INTO t \(a,b\) VALUES \(\?,\?\),\(\?,\?\) ON DUPLICATE KEY UPDATE b=VALUES\(b\)`).
-			WithArgs(1, "x", 2, "y").
-			WillReturnResult(ygggo_mysql.NewResult(0, 2))
+	// 从环境变量获取数据库配置，或使用默认值
+	config := ygggo_mysql.Config{
+		Host:     getEnv("DB_HOST", "localhost"),
+		Port:     3306,
+		Database: getEnv("DB_NAME", "test"),
+		Username: getEnv("DB_USER", "root"),
+		Password: getEnv("DB_PASSWORD", "password"),
 	}
 
+	// 创建连接池
+	pool, err := ygggo_mysql.NewPool(ctx, config)
+	if err != nil {
+		log.Fatalf("NewPool: %v", err)
+	}
+	defer pool.Close()
+
 	err = pool.WithConn(ctx, func(c ygggo_mysql.DatabaseConn) error {
+		// 创建测试表
+		_, err := c.Exec(ctx, "CREATE TABLE IF NOT EXISTS t (id INT AUTO_INCREMENT PRIMARY KEY, a INT, b TEXT, UNIQUE KEY(a))")
+		if err != nil { return err }
+
+		// 清理数据
+		_, err = c.Exec(ctx, "DELETE FROM t")
+		if err != nil { return err }
+
+		// 批量插入
 		rows := [][]any{{1, "x"}, {2, "y"}}
 		res, err := c.BulkInsert(ctx, "t", []string{"a", "b"}, rows)
 		if err != nil { return err }
 		aff, _ := res.RowsAffected()
 		fmt.Println("bulk affected:", aff)
 
+		// 重复插入时使用ON DUPLICATE KEY UPDATE
 		res, err = c.InsertOnDuplicate(ctx, "t", []string{"a", "b"}, rows, []string{"b"})
 		if err != nil { return err }
 		aff, _ = res.RowsAffected()
 		fmt.Println("upsert affected:", aff)
+
 		return nil
 	})
 	if err != nil { log.Fatalf("WithConn: %v", err) }
 
-	if mock != nil {
-		if err := mock.ExpectationsWereMet(); err != nil { log.Fatalf("expectations: %v", err) }
+	fmt.Println("ygggo_mysql example: bulk & upsert", ygggo_mysql.Version())
+}
+
+// getEnv 获取环境变量，如果不存在则返回默认值
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
 	}
-	fmt.Println("ygggo_mysql example: bulk & upsert")
+	return defaultValue
 }
 

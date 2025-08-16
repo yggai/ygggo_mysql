@@ -463,10 +463,14 @@ func containsSubstring(s, substr string) bool {
 }
 
 func TestPoolSlowQueryIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
 	ctx := context.Background()
 
-	// Create a SQLite test helper for real database operations
-	helper, err := NewSQLiteTestHelper(ctx)
+	// Create a Docker test helper for real database operations
+	helper, err := NewDockerTestHelper(ctx)
 	require.NoError(t, err)
 	defer helper.Close()
 
@@ -484,9 +488,9 @@ func TestPoolSlowQueryIntegration(t *testing.T) {
 	// Verify slow query recording is enabled
 	assert.True(t, pool.IsSlowQueryRecordingEnabled())
 
-	// Create a test table
+	// Create a test table (MySQL syntax)
 	err = pool.WithConn(ctx, func(conn DatabaseConn) error {
-		_, err := conn.Exec(ctx, "CREATE TABLE test_users (id INTEGER PRIMARY KEY, name TEXT)")
+		_, err := conn.Exec(ctx, "CREATE TABLE test_users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255))")
 		return err
 	})
 	require.NoError(t, err)

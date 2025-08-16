@@ -13,13 +13,17 @@ import (
 
 // TestBenchmarkRunner_BasicFunctionality tests basic benchmark runner functionality
 func TestBenchmarkRunner_BasicFunctionality(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
 	ctx := context.Background()
-	
-	// Create SQLite test helper
-	helper, err := NewSQLiteTestHelper(ctx)
+
+	// Create Docker test helper
+	helper, err := NewDockerTestHelper(ctx)
 	require.NoError(t, err)
 	defer helper.Close()
-	
+
 	pool := helper.Pool()
 	
 	// Create benchmark configuration
@@ -66,13 +70,17 @@ func TestBenchmarkMetrics_RecordOperation(t *testing.T) {
 
 // TestBenchmarkSuite_RunAll tests running multiple benchmark tests
 func TestBenchmarkSuite_RunAll(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
 	ctx := context.Background()
-	
-	// Create SQLite test helper
-	helper, err := NewSQLiteTestHelper(ctx)
+
+	// Create Docker test helper
+	helper, err := NewDockerTestHelper(ctx)
 	require.NoError(t, err)
 	defer helper.Close()
-	
+
 	pool := helper.Pool()
 	
 	// Create benchmark suite
@@ -101,13 +109,17 @@ func TestBenchmarkSuite_RunAll(t *testing.T) {
 
 // TestConnectionBenchmark tests connection performance
 func TestConnectionBenchmark(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
 	ctx := context.Background()
-	
-	// Create SQLite test helper
-	helper, err := NewSQLiteTestHelper(ctx)
+
+	// Create Docker test helper
+	helper, err := NewDockerTestHelper(ctx)
 	require.NoError(t, err)
 	defer helper.Close()
-	
+
 	pool := helper.Pool()
 	
 	// Create connection benchmark
@@ -131,10 +143,14 @@ func TestConnectionBenchmark(t *testing.T) {
 
 // TestTransactionBenchmark tests transaction performance
 func TestTransactionBenchmark(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
 	ctx := context.Background()
 	
-	// Create SQLite test helper
-	helper, err := NewSQLiteTestHelper(ctx)
+	// Create Docker test helper
+	helper, err := NewDockerTestHelper(ctx)
 	require.NoError(t, err)
 	defer helper.Close()
 	
@@ -162,10 +178,14 @@ func TestTransactionBenchmark(t *testing.T) {
 
 // TestConcurrentBenchmark tests concurrent access performance
 func TestConcurrentBenchmark(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
 	ctx := context.Background()
-	
-	// Create SQLite test helper
-	helper, err := NewSQLiteTestHelper(ctx)
+
+	// Create Docker test helper
+	helper, err := NewDockerTestHelper(ctx)
 	require.NoError(t, err)
 	defer helper.Close()
 	
@@ -194,10 +214,14 @@ func TestConcurrentBenchmark(t *testing.T) {
 
 // TestBenchmarkResult_LatencyPercentiles tests latency percentile calculations
 func TestBenchmarkResult_LatencyPercentiles(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
 	ctx := context.Background()
-	
-	// Create SQLite test helper
-	helper, err := NewSQLiteTestHelper(ctx)
+
+	// Create Docker test helper
+	helper, err := NewDockerTestHelper(ctx)
 	require.NoError(t, err)
 	defer helper.Close()
 	
@@ -244,10 +268,14 @@ func TestBenchmarkConfig_Validation(t *testing.T) {
 
 // TestBenchmarkError_Handling tests error handling during benchmarks
 func TestBenchmarkError_Handling(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
 	ctx := context.Background()
-	
-	// Create SQLite test helper
-	helper, err := NewSQLiteTestHelper(ctx)
+
+	// Create Docker test helper
+	helper, err := NewDockerTestHelper(ctx)
 	require.NoError(t, err)
 	defer helper.Close()
 	
@@ -272,29 +300,33 @@ func TestBenchmarkError_Handling(t *testing.T) {
 
 // TestBenchmarkRunner_ProgressReporting tests progress reporting during long benchmarks
 func TestBenchmarkRunner_ProgressReporting(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
 	ctx := context.Background()
-	
-	// Create SQLite test helper
-	helper, err := NewSQLiteTestHelper(ctx)
+
+	// Create Docker test helper
+	helper, err := NewDockerTestHelper(ctx)
 	require.NoError(t, err)
 	defer helper.Close()
-	
+
 	pool := helper.Pool()
-	
+
 	// Create benchmark with progress reporting
 	config := DefaultBenchmarkConfig()
 	config.Duration = 3 * time.Second
 	config.ReportInterval = 1 * time.Second
 	config.Concurrency = 3
-	
+
 	runner := NewBenchmarkRunner(config, pool)
 	test := &SimpleBenchmarkTest{}
-	
+
 	// This test mainly verifies that progress reporting doesn't break the benchmark
 	result, err := runner.RunBenchmark(ctx, test)
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	
+
 	assert.True(t, result.Duration >= config.Duration)
 	assert.True(t, result.TotalOps > 0)
 }
@@ -647,9 +679,13 @@ func (t *ErrorBenchmarkTest) Cleanup(ctx context.Context, pool DatabasePool) err
 // Test specific benchmark implementations
 
 func TestSelectBenchmark(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
 	ctx := context.Background()
 
-	helper, err := NewSQLiteTestHelper(ctx)
+	helper, err := NewDockerTestHelper(ctx)
 	require.NoError(t, err)
 	defer helper.Close()
 
@@ -671,9 +707,13 @@ func TestSelectBenchmark(t *testing.T) {
 }
 
 func TestInsertPerformanceBenchmark(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
 	ctx := context.Background()
 
-	helper, err := NewSQLiteTestHelper(ctx)
+	helper, err := NewDockerTestHelper(ctx)
 	require.NoError(t, err)
 	defer helper.Close()
 
@@ -700,9 +740,13 @@ func TestInsertPerformanceBenchmark(t *testing.T) {
 }
 
 func TestBulkOperationBenchmark(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
 	ctx := context.Background()
 
-	helper, err := NewSQLiteTestHelper(ctx)
+	helper, err := NewDockerTestHelper(ctx)
 	require.NoError(t, err)
 	defer helper.Close()
 
@@ -733,9 +777,13 @@ func TestBulkOperationBenchmark(t *testing.T) {
 }
 
 func TestMixedWorkloadBenchmark(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
 	ctx := context.Background()
 
-	helper, err := NewSQLiteTestHelper(ctx)
+	helper, err := NewDockerTestHelper(ctx)
 	require.NoError(t, err)
 	defer helper.Close()
 
@@ -766,9 +814,13 @@ func TestMixedWorkloadBenchmark(t *testing.T) {
 }
 
 func TestUpdateBenchmark(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker test in short mode")
+	}
+
 	ctx := context.Background()
 
-	helper, err := NewSQLiteTestHelper(ctx)
+	helper, err := NewDockerTestHelper(ctx)
 	require.NoError(t, err)
 	defer helper.Close()
 

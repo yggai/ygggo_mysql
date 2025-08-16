@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/yggai/ygggo_mysql"
 	"go.opentelemetry.io/otel"
@@ -29,9 +30,20 @@ func main() {
 	metricsReader := metric.NewManualReader()
 	mp := metric.NewMeterProvider(metric.WithReader(metricsReader))
 
-	// Create pool with mock
-	pool, mock, err := ygggo_mysql.NewPoolWithMock(ctx, ygggo_mysql.Config{}, true)
-	if err != nil { log.Fatalf("NewPoolWithMock: %v", err) }
+	// 从环境变量获取数据库配置，或使用默认值
+	config := ygggo_mysql.Config{
+		Host:     getEnv("DB_HOST", "localhost"),
+		Port:     3306,
+		Database: getEnv("DB_NAME", "test"),
+		Username: getEnv("DB_USER", "root"),
+		Password: getEnv("DB_PASSWORD", "password"),
+	}
+
+	// 创建连接池
+	pool, err := ygggo_mysql.NewPool(ctx, config)
+	if err != nil {
+		log.Fatalf("NewPool: %v", err)
+	}
 	defer pool.Close()
 
 	// Enable both telemetry and metrics
@@ -39,16 +51,25 @@ func main() {
 	pool.EnableMetrics(true)
 	pool.SetMeterProvider(mp)
 
-	// Setup mock expectations
-	if mock != nil {
-		rows := ygggo_mysql.NewRows([]string{"id", "name"})
-		rows = ygggo_mysql.AddRow(rows, 1, "Alice")
-		rows = ygggo_mysql.AddRow(rows, 2, "Bob")
-		mock.ExpectQuery(`SELECT id, name FROM users`).WillReturnRows(rows)
-		
-		mock.ExpectExec(`INSERT INTO users \(name\) VALUES \(\?\)`).WithArgs("Charlie").
-			WillReturnResult(ygggo_mysql.NewResult(3, 1))
-	}
+	// 设置测试数据
+	err = pool.WithConn(ctx, func(c ygggo_mysql.DatabaseConn) error {
+		// 创建测试表
+		_, err := c.Exec(ctx, `CREATE TABLE IF NOT EXISTS users (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			name VARCHAR(100)
+		)`)
+		if err != nil { return err }
+
+		// 清理并插入测试数据
+		_, err = c.Exec(ctx, "DELETE FROM users")
+		if err != nil { return err }
+
+		_, err = c.Exec(ctx, "INSERT INTO users (name) VALUES ('Alice'), ('Bob')")
+		if err != nil { return err }
+
+		return nil
+	})
+	if err != nil { log.Fatalf("Setup: %v", err) }
 
 	fmt.Println("=== Executing Database Operations ===")
 
@@ -116,13 +137,15 @@ func main() {
 		}
 	}
 
-	if mock != nil {
-		if err := mock.ExpectationsWereMet(); err != nil {
-			log.Fatalf("mock expectations not met: %v", err)
-		}
-	}
-
-	fmt.Println("\n🎉 ygggo_mysql: Combined telemetry & metrics integration working!")
+	fmt.Printf("\n🎉 ygggo_mysql: Combined telemetry & metrics integration working! %s\n", ygggo_mysql.Version())
 	fmt.Println("✅ OpenTelemetry traces are shown above")
 	fmt.Println("✅ Metrics summary is shown above")
+}
+
+// getEnv 获取环境变量，如果不存在则返回默认值
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }
