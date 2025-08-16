@@ -32,6 +32,8 @@ type Pool struct {
 	slowQueryThreshold time.Duration
 	// slow query recording
 	slowQueryRecorder *SlowQueryRecorder
+	// health monitoring
+	healthMonitor *HealthMonitor
 }
 
 // SetBorrowWarnThreshold sets the warn threshold for held connections.
