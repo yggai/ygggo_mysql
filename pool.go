@@ -4,10 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
+	"strings"
 	"sync/atomic"
 	"time"
 
+	mysql "github.com/go-sql-driver/mysql"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -205,6 +208,12 @@ func NewPool(ctx context.Context, cfg Config) (*Pool, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Ensure database exists (auto-create if needed)
+	if err := ensureDatabaseExists(ctx, cfg, dsn); err != nil {
+		return nil, fmt.Errorf("database auto-creation failed: %w", err)
+	}
+
 	// Record last used DSN for diagnostics
 	lastUsedDSN.Store(dsn)
 	// Open DB
@@ -310,6 +319,83 @@ func GetDSN() string {
 		return v
 	}
 	return ""
+}
+
+// ensureDatabaseExists checks if the target database exists and creates it if it doesn't.
+// It returns the original DSN if successful, or an error if the operation fails.
+func ensureDatabaseExists(ctx context.Context, cfg Config, targetDSN string) error {
+	// Skip if no database is specified
+	if cfg.Database == "" {
+		return nil
+	}
+
+	// Parse the target DSN to extract connection info
+	parsedDSN, err := mysql.ParseDSN(targetDSN)
+	if err != nil {
+		return fmt.Errorf("failed to parse DSN: %w", err)
+	}
+
+	// Create a DSN without database name to connect to MySQL server
+	serverDSN := fmt.Sprintf("%s:%s@tcp(%s)/", parsedDSN.User, parsedDSN.Passwd, parsedDSN.Addr)
+	if len(parsedDSN.Params) > 0 {
+		var params []string
+		for k, v := range parsedDSN.Params {
+			params = append(params, fmt.Sprintf("%s=%s", k, v))
+		}
+		serverDSN += "?" + strings.Join(params, "&")
+	}
+
+	// Connect to MySQL server (without specifying database)
+	db, err := sql.Open(cfg.Driver, serverDSN)
+	if err != nil {
+		return fmt.Errorf("failed to connect to MySQL server: %w", err)
+	}
+	defer db.Close()
+
+	// Test the connection
+	if err := db.PingContext(ctx); err != nil {
+		return fmt.Errorf("failed to ping MySQL server: %w", err)
+	}
+
+	// Check if database exists
+	exists, err := checkDatabaseExists(ctx, db, cfg.Database)
+	if err != nil {
+		return fmt.Errorf("failed to check database existence: %w", err)
+	}
+
+	// Create database if it doesn't exist
+	if !exists {
+		if err := createDatabase(ctx, db, cfg.Database); err != nil {
+			return fmt.Errorf("failed to create database: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// checkDatabaseExists checks if a database exists
+func checkDatabaseExists(ctx context.Context, db *sql.DB, dbName string) (bool, error) {
+	query := "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?"
+	row := db.QueryRowContext(ctx, query, dbName)
+
+	var foundName string
+	err := row.Scan(&foundName)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil // Database doesn't exist
+		}
+		return false, err // Other error
+	}
+
+	return true, nil // Database exists
+}
+
+// createDatabase creates a new database
+func createDatabase(ctx context.Context, db *sql.DB, dbName string) error {
+	// Use backticks to handle database names with special characters
+	query := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", dbName)
+	_, err := db.ExecContext(ctx, query)
+	return err
 }
 
 // NewPoolEnv creates a new database connection pool using only environment variables.
