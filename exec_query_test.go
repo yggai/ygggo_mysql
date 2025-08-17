@@ -13,16 +13,30 @@ func TestConn_Exec_Success(t *testing.T) {
 	}
 	defer pool.Close()
 
+	// Use unique table name for this test
+	tableName := "test_table_exec_success"
+
+	// Clean up table before and after test
+	defer func() {
+		_ = pool.WithConn(ctx, func(c DatabaseConn) error {
+			_, _ = c.Exec(ctx, "DROP TABLE IF EXISTS "+tableName)
+			return nil
+		})
+	}()
+
 	// Do everything in a single WithConn to avoid nesting
 	err = pool.WithConn(ctx, func(c DatabaseConn) error {
+		// Clean up any existing table first
+		_, _ = c.Exec(context.Background(), "DROP TABLE IF EXISTS "+tableName)
+
 		// Create table (MySQL syntax)
-		_, err := c.Exec(context.Background(), "CREATE TABLE test_table (id INT AUTO_INCREMENT PRIMARY KEY, a INT, b TEXT)")
+		_, err := c.Exec(context.Background(), "CREATE TABLE "+tableName+" (id INT AUTO_INCREMENT PRIMARY KEY, a INT, b TEXT)")
 		if err != nil {
 			return err
 		}
 
 		// Insert data
-		res, err := c.Exec(context.Background(), "INSERT INTO test_table(a,b) VALUES(?,?)", 1, "x")
+		res, err := c.Exec(context.Background(), "INSERT INTO "+tableName+"(a,b) VALUES(?,?)", 1, "x")
 		if err != nil {
 			return err
 		}
@@ -32,7 +46,7 @@ func TestConn_Exec_Success(t *testing.T) {
 		}
 
 		// Verify data was inserted
-		rs, err := c.Query(context.Background(), "SELECT COUNT(*) FROM test_table")
+		rs, err := c.Query(context.Background(), "SELECT COUNT(*) FROM "+tableName)
 		if err != nil {
 			return err
 		}
@@ -65,26 +79,40 @@ func TestConn_Query_And_Stream(t *testing.T) {
 	}
 	defer pool.Close()
 
+	// Use unique table name for this test
+	tableName := "test_table_query_stream"
+
+	// Clean up table before and after test
+	defer func() {
+		_ = pool.WithConn(ctx, func(c DatabaseConn) error {
+			_, _ = c.Exec(ctx, "DROP TABLE IF EXISTS "+tableName)
+			return nil
+		})
+	}()
+
 	// Do everything in a single WithConn to avoid nesting
 	err = pool.WithConn(ctx, func(c DatabaseConn) error {
+		// Clean up any existing table first
+		_, _ = c.Exec(context.Background(), "DROP TABLE IF EXISTS "+tableName)
+
 		// Create test table (MySQL syntax)
-		_, err := c.Exec(context.Background(), "CREATE TABLE test_table (id INT AUTO_INCREMENT PRIMARY KEY, name TEXT)")
+		_, err := c.Exec(context.Background(), "CREATE TABLE "+tableName+" (id INT AUTO_INCREMENT PRIMARY KEY, name TEXT)")
 		if err != nil {
 			return err
 		}
 
 		// Insert test data
-		_, err = c.Exec(context.Background(), "INSERT INTO test_table(id, name) VALUES(1, 'a')")
+		_, err = c.Exec(context.Background(), "INSERT INTO "+tableName+"(id, name) VALUES(1, 'a')")
 		if err != nil {
 			return err
 		}
-		_, err = c.Exec(context.Background(), "INSERT INTO test_table(id, name) VALUES(2, 'b')")
+		_, err = c.Exec(context.Background(), "INSERT INTO "+tableName+"(id, name) VALUES(2, 'b')")
 		if err != nil {
 			return err
 		}
 
 		// Query and read all
-		rs, err := c.Query(context.Background(), "SELECT id,name FROM test_table ORDER BY id")
+		rs, err := c.Query(context.Background(), "SELECT id,name FROM "+tableName+" ORDER BY id")
 		if err != nil {
 			return err
 		}
@@ -106,7 +134,7 @@ func TestConn_Query_And_Stream(t *testing.T) {
 	// Test streaming in a separate WithConn
 	callbacks := 0
 	err = pool.WithConn(ctx, func(c DatabaseConn) error {
-		return c.QueryStream(context.Background(), "SELECT id,name FROM test_table ORDER BY id", func(_ []any) error {
+		return c.QueryStream(context.Background(), "SELECT id,name FROM "+tableName+" ORDER BY id", func(_ []any) error {
 			callbacks++
 			return nil
 		})

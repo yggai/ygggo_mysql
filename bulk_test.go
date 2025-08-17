@@ -12,33 +12,62 @@ func TestBulkInsert_Simple(t *testing.T) {
 	}
 	defer helper.Close()
 
+	// Use unique table name for this test
+	tableName := "bulk_insert_simple_test"
+	ctx := context.Background()
+
+	// Clean up table before and after test
+	defer func() {
+		_ = helper.Pool().WithConn(ctx, func(c DatabaseConn) error {
+			_, _ = c.Exec(ctx, "DROP TABLE IF EXISTS "+tableName)
+			return nil
+		})
+	}()
+
 	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		// Clean up any existing table first
+		_, _ = c.Exec(context.Background(), "DROP TABLE IF EXISTS "+tableName)
+
 		// Create test table (MySQL syntax)
-		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INT AUTO_INCREMENT PRIMARY KEY, a INT, b TEXT)")
-		if err != nil { return err }
+		_, err := c.Exec(context.Background(), "CREATE TABLE "+tableName+" (id INT AUTO_INCREMENT PRIMARY KEY, a INT, b TEXT)")
+		if err != nil {
+			return err
+		}
 
 		// Test bulk insert
 		rows := [][]any{{1, "x"}, {2, "y"}}
-		res, err := c.BulkInsert(context.Background(), "t", []string{"a", "b"}, rows)
-		if err != nil { return err }
+		res, err := c.BulkInsert(context.Background(), tableName, []string{"a", "b"}, rows)
+		if err != nil {
+			return err
+		}
 		aff, _ := res.RowsAffected()
-		if aff != 2 { t.Fatalf("affected=%d", aff) }
+		if aff != 2 {
+			t.Fatalf("affected=%d", aff)
+		}
 
 		// Verify data was inserted
-		rs, err := c.Query(context.Background(), "SELECT COUNT(*) FROM t")
-		if err != nil { return err }
+		rs, err := c.Query(context.Background(), "SELECT COUNT(*) FROM "+tableName)
+		if err != nil {
+			return err
+		}
 		defer rs.Close()
 
 		var count int
 		if rs.Next() {
 			err = rs.Scan(&count)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 		}
-		if count != 2 { t.Fatalf("expected 2 rows, got %d", count) }
+		if count != 2 {
+			t.Fatalf("expected 2 rows, got %d", count)
+		}
 
 		return nil
 	})
-	if err != nil { t.Fatalf("WithConn: %v", err) }
+	if err != nil {
+		t.Fatalf("WithConn: %v", err)
+	}
 }
 
 func TestInsertOnDuplicate_Simple(t *testing.T) {
@@ -48,17 +77,36 @@ func TestInsertOnDuplicate_Simple(t *testing.T) {
 	}
 	defer helper.Close()
 
+	// Use unique table name for this test
+	tableName := "insert_duplicate_test"
+	ctx := context.Background()
+
+	// Clean up table before and after test
+	defer func() {
+		_ = helper.Pool().WithConn(ctx, func(c DatabaseConn) error {
+			_, _ = c.Exec(ctx, "DROP TABLE IF EXISTS "+tableName)
+			return nil
+		})
+	}()
+
 	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
+		// Clean up any existing table first
+		_, _ = c.Exec(context.Background(), "DROP TABLE IF EXISTS "+tableName)
+
 		// Create test table with unique constraint
-		_, err := c.Exec(context.Background(), "CREATE TABLE t (id INT AUTO_INCREMENT PRIMARY KEY, a INT UNIQUE, b TEXT)")
-		if err != nil { return err }
+		_, err := c.Exec(context.Background(), "CREATE TABLE "+tableName+" (id INT AUTO_INCREMENT PRIMARY KEY, a INT UNIQUE, b TEXT)")
+		if err != nil {
+			return err
+		}
 
 		// Test INSERT ON DUPLICATE KEY UPDATE
 		rows := [][]any{{1, "x"}, {1, "y"}} // Duplicate key
-		_, err = c.InsertOnDuplicate(context.Background(), "t", []string{"a", "b"}, rows, []string{"b"})
+		_, err = c.InsertOnDuplicate(context.Background(), tableName, []string{"a", "b"}, rows, []string{"b"})
 		return err
 	})
-	if err != nil { t.Fatalf("WithConn: %v", err) }
+	if err != nil {
+		t.Fatalf("WithConn: %v", err)
+	}
 }
 
 func TestBulkInsert_EmptyRows_Error(t *testing.T) {
@@ -70,10 +118,14 @@ func TestBulkInsert_EmptyRows_Error(t *testing.T) {
 
 	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
 		_, err := c.BulkInsert(context.Background(), "t", []string{"a"}, nil)
-		if err == nil { t.Fatalf("expected error for empty rows") }
+		if err == nil {
+			t.Fatalf("expected error for empty rows")
+		}
 		return nil
 	})
-	if err != nil { t.Fatalf("WithConn: %v", err) }
+	if err != nil {
+		t.Fatalf("WithConn: %v", err)
+	}
 }
 
 func TestBulkInsert_ColumnMismatch_Error(t *testing.T) {
@@ -86,9 +138,12 @@ func TestBulkInsert_ColumnMismatch_Error(t *testing.T) {
 	err = helper.Pool().WithConn(context.Background(), func(c DatabaseConn) error {
 		rows := [][]any{{1, "x"}, {2}} // mismatch for second row
 		_, err := c.BulkInsert(context.Background(), "t", []string{"a", "b"}, rows)
-		if err == nil { t.Fatalf("expected error for mismatch columns") }
+		if err == nil {
+			t.Fatalf("expected error for mismatch columns")
+		}
 		return nil
 	})
-	if err != nil { t.Fatalf("WithConn: %v", err) }
+	if err != nil {
+		t.Fatalf("WithConn: %v", err)
+	}
 }
-
