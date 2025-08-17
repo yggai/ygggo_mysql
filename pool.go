@@ -59,14 +59,14 @@ type Pool struct {
 	telemetryEnabled bool // OpenTelemetry tracing enabled
 
 	// Metrics collection
-	metricsEnabled bool                   // Prometheus metrics enabled
-	meterProvider  metric.MeterProvider   // OpenTelemetry meter provider
-	metrics        *Metrics               // Metrics collector instance
+	metricsEnabled bool                 // Prometheus metrics enabled
+	meterProvider  metric.MeterProvider // OpenTelemetry meter provider
+	metrics        *Metrics             // Metrics collector instance
 
 	// Logging configuration
-	loggingEnabled     bool           // Structured logging enabled
-	logger            *slog.Logger    // Logger instance
-	slowQueryThreshold time.Duration  // Threshold for slow query logging
+	loggingEnabled     bool          // Structured logging enabled
+	logger             *slog.Logger  // Logger instance
+	slowQueryThreshold time.Duration // Threshold for slow query logging
 
 	// Slow query analysis
 	slowQueryRecorder *SlowQueryRecorder // Records and analyzes slow queries
@@ -117,7 +117,9 @@ func (p *Pool) SetLeakHandler(h func(BorrowLeak)) {
 func (p *Pool) onBorrow(acqNS int64) {
 	atomic.AddInt64(&p.borrowed, 1)
 	thr := atomic.LoadInt64(&p.borrowWarnNS)
-	if thr <= 0 { return }
+	if thr <= 0 {
+		return
+	}
 	if h, _ := p.leakHandler.Load().(func(BorrowLeak)); h != nil {
 		// schedule async watchdog
 		go func(start int64) {
@@ -203,6 +205,8 @@ func NewPool(ctx context.Context, cfg Config) (*Pool, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Record last used DSN for diagnostics
+	lastUsedDSN.Store(dsn)
 	// Open DB
 	db, err := sql.Open(cfg.Driver, dsn)
 	if err != nil {
@@ -295,4 +299,21 @@ func (p *Pool) GetSlowQueryThreshold() time.Duration {
 	return p.slowQueryThreshold
 }
 
+// lastUsedDSN stores the most recent DSN that NewPool used to open a connection.
+// It enables inspection via GetDSN() for diagnostics and testing.
+var lastUsedDSN atomic.Value // stores string
 
+// GetDSN returns the last Data Source Name used to initialize a pool in this process.
+// Returns empty string if none has been set yet.
+func GetDSN() string {
+	if v, ok := lastUsedDSN.Load().(string); ok {
+		return v
+	}
+	return ""
+}
+
+// NewPoolEnv creates a new database connection pool using only environment variables.
+// It is equivalent to calling NewPool(ctx, Config{}), since NewPool applies env overrides.
+func NewPoolEnv(ctx context.Context) (*Pool, error) {
+	return NewPool(ctx, Config{})
+}

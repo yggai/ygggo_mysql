@@ -1,14 +1,13 @@
 module github.com/yggai/ygggo_mysql
 
-go 1.23.0
-
-toolchain go1.24.5
+go 1.24.5
 
 require (
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.34.0
 	github.com/testcontainers/testcontainers-go/modules/mysql v0.34.0
+	github.com/yggai/ygggo_env v1.0.0
 	go.opentelemetry.io/otel v1.37.0
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.37.0
 	go.opentelemetry.io/otel/metric v1.37.0
