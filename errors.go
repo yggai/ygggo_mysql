@@ -51,4 +51,3 @@ func adapt(err error) error {
 	}
 	return err
 }
-

@@ -11,34 +11,34 @@ import (
 // QueryBuilder provides a fluent interface for building SQL queries
 type QueryBuilder struct {
 	conn DatabaseConn
-	
+
 	// Query type and basic structure
 	queryType string
-	
+
 	// SELECT fields
-	selectFields []string
-	fromTable    string
-	joins        []string
-	whereConditions []whereCondition
-	groupByFields   []string
+	selectFields     []string
+	fromTable        string
+	joins            []string
+	whereConditions  []whereCondition
+	groupByFields    []string
 	havingConditions []whereCondition
-	orderByFields   []string
-	limitValue      *int
-	offsetValue     *int
-	
+	orderByFields    []string
+	limitValue       *int
+	offsetValue      *int
+
 	// INSERT fields
 	insertTable       string
 	insertColumns     []string
 	insertValues      [][]any
 	onDuplicateUpdate map[string]any
-	
+
 	// UPDATE fields
 	updateTable string
 	setFields   map[string]any
-	
+
 	// DELETE fields
 	deleteTable string
-	
+
 	// Collected arguments for parameter binding
 	args []any
 }
@@ -199,7 +199,7 @@ func (qb *QueryBuilder) Exec(ctx context.Context) (sql.Result, error) {
 func (qb *QueryBuilder) buildSelectQuery() (string, []any) {
 	var query strings.Builder
 	var args []any
-	
+
 	// SELECT clause
 	query.WriteString("SELECT ")
 	if len(qb.selectFields) == 0 {
@@ -207,19 +207,19 @@ func (qb *QueryBuilder) buildSelectQuery() (string, []any) {
 	} else {
 		query.WriteString(strings.Join(qb.selectFields, ", "))
 	}
-	
+
 	// FROM clause
 	if qb.fromTable != "" {
 		query.WriteString(" FROM ")
 		query.WriteString(qb.fromTable)
 	}
-	
+
 	// JOIN clauses
 	for _, join := range qb.joins {
 		query.WriteString(" ")
 		query.WriteString(join)
 	}
-	
+
 	// WHERE clause
 	if len(qb.whereConditions) > 0 {
 		query.WriteString(" WHERE ")
@@ -233,13 +233,13 @@ func (qb *QueryBuilder) buildSelectQuery() (string, []any) {
 			args = append(args, condition.args...)
 		}
 	}
-	
+
 	// GROUP BY clause
 	if len(qb.groupByFields) > 0 {
 		query.WriteString(" GROUP BY ")
 		query.WriteString(strings.Join(qb.groupByFields, ", "))
 	}
-	
+
 	// HAVING clause
 	if len(qb.havingConditions) > 0 {
 		query.WriteString(" HAVING ")
@@ -253,25 +253,25 @@ func (qb *QueryBuilder) buildSelectQuery() (string, []any) {
 			args = append(args, condition.args...)
 		}
 	}
-	
+
 	// ORDER BY clause
 	if len(qb.orderByFields) > 0 {
 		query.WriteString(" ORDER BY ")
 		query.WriteString(strings.Join(qb.orderByFields, ", "))
 	}
-	
+
 	// LIMIT clause
 	if qb.limitValue != nil {
 		query.WriteString(" LIMIT ")
 		query.WriteString(strconv.Itoa(*qb.limitValue))
 	}
-	
+
 	// OFFSET clause
 	if qb.offsetValue != nil {
 		query.WriteString(" OFFSET ")
 		query.WriteString(strconv.Itoa(*qb.offsetValue))
 	}
-	
+
 	return query.String(), args
 }
 
