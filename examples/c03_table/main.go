@@ -11,17 +11,15 @@ import (
 )
 
 type User struct {
-	Id   int    `json:'id' ggm:'id'`
-	Name string `json:'name' ggm:'name'`
+	ID   int    `json:"id" ggm:"id,pk,auto"`
+	Name string `json:"name" ggm:"name,notnull,default=Anonymous"`
 }
 
 func main() {
 	// 自动查找并加载环境变量
 	gge.LoadEnv()
 
-	// 自动读取环境变量里面的值创建数据库连接池对象
-	// 创建连接
-	// 使用显式可控的上下文，避免默认背景上下文
+	// 使用显式可控的上下文
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -32,8 +30,7 @@ func main() {
 	defer pool.Close()
 
 	// 测试连接
-	err = pool.Ping(ctx)
-	if err != nil {
+	if err := pool.Ping(ctx); err != nil {
 		log.Fatalf("Ping失败: %v", err)
 	}
 	fmt.Println("✅ 数据库连接成功!")
@@ -44,9 +41,15 @@ func main() {
 	// 创建表格
 	db.AddTable(&User{})
 
+	// 打印建表SQL（推导）
+	fmt.Println("建表SQL (推导)：", db.GetCreateTableSQL(&User{}))
+	// 打印实际建表DDL（SHOW CREATE TABLE）
+	fmt.Println("实际建表DDL：", db.ShowCreateTable(&User{}))
+
 	// 查看所有表格
 	fmt.Println("查看所有表格：", db.GetAllTable())
 
 	// 删除表格
 	db.DeleteTable(&User{})
 }
+
