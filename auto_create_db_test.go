@@ -108,6 +108,20 @@ func (c *enhancedFakeConn) exec(query string, args []driver.Value) (driver.Resul
 		}
 		return &enhancedFakeResult{}, nil
 	}
+	if strings.HasPrefix(query, "DROP DATABASE") {
+		// Extract database name from original query (preserve case)
+		parts := strings.Fields(originalQuery)
+		if len(parts) >= 3 {
+			dbName := strings.Trim(parts[2], "`'\"")
+			// Handle optional IF EXISTS
+			upper := strings.ToUpper(dbName)
+			if strings.Contains(upper, "IF") && len(parts) >= 5 {
+				dbName = strings.Trim(parts[len(parts)-1], "`'\"")
+			}
+			delete(c.driver.databases, dbName)
+		}
+		return &enhancedFakeResult{}, nil
+	}
 
 	return &enhancedFakeResult{}, nil
 }
