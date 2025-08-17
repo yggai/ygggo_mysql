@@ -31,3 +31,6 @@ go.work.sum
 # .idea/
 # .vscode/
 TODO.md
+*.json
+*.csv
+*.sql

@@ -48,7 +48,7 @@ func TestHealthCheck_WithTimeout(t *testing.T) {
 	config.Timeout = 1 * time.Millisecond // Very short timeout
 
 	ctx := context.Background()
-	status, err := pool.HealthCheckWithConfig(ctx, config)
+	status, _ := pool.HealthCheckWithConfig(ctx, config)
 
 	// Should complete but might have timeout-related issues
 	require.NotNil(t, status)
