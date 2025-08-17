@@ -12,10 +12,6 @@ type row struct {
 }
 
 func TestNamedExec_WithStruct(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -50,10 +46,6 @@ func TestNamedExec_WithStruct(t *testing.T) {
 }
 
 func TestNamedExec_WithSliceStructs(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -88,10 +80,6 @@ func TestNamedExec_WithSliceStructs(t *testing.T) {
 }
 
 func TestNamedQuery_WithMap(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -122,10 +110,6 @@ func TestNamedQuery_WithMap(t *testing.T) {
 }
 
 func TestIn_Helper_ExpandsSlice(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	if err != nil {
 		t.Fatal(err)

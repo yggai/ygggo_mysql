@@ -6,10 +6,6 @@ import (
 )
 
 func TestPoolInterface_DockerImplementation(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	ctx := context.Background()
 
 	// Test that Docker pool implements DatabasePool interface
@@ -25,10 +21,6 @@ func TestPoolInterface_DockerImplementation(t *testing.T) {
 }
 
 func TestConnInterface_DockerImplementation(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	ctx := context.Background()
 
 	helper, err := NewDockerTestHelper(ctx)

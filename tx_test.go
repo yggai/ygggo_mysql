@@ -7,10 +7,6 @@ import (
 )
 
 func TestWithinTx_CommitOnSuccess(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -47,10 +43,6 @@ func TestWithinTx_CommitOnSuccess(t *testing.T) {
 }
 
 func TestWithinTx_RollbackOnFnError(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -85,10 +77,6 @@ func TestWithinTx_RollbackOnFnError(t *testing.T) {
 }
 
 func TestWithinTx_RetryOnDeadlock(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	if err != nil {
 		t.Fatal(err)

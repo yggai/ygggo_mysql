@@ -11,10 +11,6 @@ import (
 )
 
 func TestHealthCheck_BasicConnectivity(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -41,10 +37,6 @@ func TestHealthCheck_BasicConnectivity(t *testing.T) {
 }
 
 func TestHealthCheck_WithTimeout(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -64,10 +56,6 @@ func TestHealthCheck_WithTimeout(t *testing.T) {
 }
 
 func TestHealthCheck_QueryExecution(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -93,10 +81,6 @@ func TestHealthCheck_QueryExecution(t *testing.T) {
 }
 
 func TestHealthCheck_InvalidQuery(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -129,10 +113,6 @@ func TestHealthCheck_InvalidQuery(t *testing.T) {
 }
 
 func TestDeepHealthCheck(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -158,10 +138,6 @@ func TestDeepHealthCheck(t *testing.T) {
 }
 
 func TestHealthCheck_PoolStats(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -194,10 +170,6 @@ func TestHealthCheck_PoolStats(t *testing.T) {
 }
 
 func TestHealthCheck_ConcurrentConnections(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -272,10 +244,6 @@ func TestHealthCheck_NilPool(t *testing.T) {
 }
 
 func TestHealthCheck_ContextCancellation(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -297,10 +265,6 @@ func TestHealthCheck_ContextCancellation(t *testing.T) {
 }
 
 func TestHealthMonitoring_StartStop(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -332,10 +296,6 @@ func TestHealthMonitoring_StartStop(t *testing.T) {
 }
 
 func TestHealthMonitoring_AlreadyRunning(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -354,10 +314,6 @@ func TestHealthMonitoring_AlreadyRunning(t *testing.T) {
 }
 
 func TestHealthMonitoring_CustomConfig(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -390,10 +346,6 @@ func TestHealthMonitoring_CustomConfig(t *testing.T) {
 }
 
 func TestHealthMonitor_DirectUsage(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -427,10 +379,6 @@ func TestHealthMonitor_DirectUsage(t *testing.T) {
 }
 
 func TestHealthMonitoring_StatusCopy(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -462,10 +410,6 @@ func TestHealthMonitoring_StatusCopy(t *testing.T) {
 }
 
 func TestHealthCheck_WithRetry(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -483,10 +427,6 @@ func TestHealthCheck_WithRetry(t *testing.T) {
 }
 
 func TestHealthCheck_RetryWithCustomConfig(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -507,10 +447,6 @@ func TestHealthCheck_RetryWithCustomConfig(t *testing.T) {
 }
 
 func TestPing_WithRetry(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -549,10 +485,6 @@ func TestHealthCheck_RecoverableErrors(t *testing.T) {
 }
 
 func TestHealthCheck_RetryContextCancellation(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()

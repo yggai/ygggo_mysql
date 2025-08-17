@@ -463,10 +463,6 @@ func containsSubstring(s, substr string) bool {
 }
 
 func TestPoolSlowQueryIntegration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	ctx := context.Background()
 
 	// Create a Docker test helper for real database operations

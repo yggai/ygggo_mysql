@@ -13,36 +13,29 @@ import (
 
 // TestBenchmarkRunner_BasicFunctionality tests basic benchmark runner functionality
 func TestBenchmarkRunner_BasicFunctionality(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	ctx := context.Background()
 
-	// Create Docker test helper
-	helper, err := NewDockerTestHelper(ctx)
+	pool, err := NewPoolEnv(ctx)
 	require.NoError(t, err)
-	defer helper.Close()
+	defer pool.Close()
 
-	pool := helper.Pool()
-	
 	// Create benchmark configuration
 	config := DefaultBenchmarkConfig()
 	config.Duration = 2 * time.Second
 	config.Concurrency = 2
 	config.WarmupTime = 500 * time.Millisecond
-	
+
 	// Create benchmark runner
 	runner := NewBenchmarkRunner(config, pool)
-	
+
 	// Create a simple test
 	test := &SimpleBenchmarkTest{}
-	
+
 	// Run benchmark
 	result, err := runner.RunBenchmark(ctx, test)
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	
+
 	// Verify basic result properties
 	assert.Equal(t, test.Name(), result.TestName)
 	assert.True(t, result.Duration > 0)
@@ -54,15 +47,15 @@ func TestBenchmarkRunner_BasicFunctionality(t *testing.T) {
 // TestBenchmarkMetrics_RecordOperation tests metrics recording
 func TestBenchmarkMetrics_RecordOperation(t *testing.T) {
 	metrics := NewBenchmarkMetrics()
-	
+
 	// Record some operations
 	metrics.RecordOperation(10*time.Millisecond, true)
 	metrics.RecordOperation(20*time.Millisecond, true)
 	metrics.RecordOperation(15*time.Millisecond, false) // error
-	
+
 	// Get snapshot
 	snapshot := metrics.GetSnapshot()
-	
+
 	assert.Equal(t, int64(3), snapshot.Operations)
 	assert.Equal(t, int64(1), snapshot.Errors)
 	assert.True(t, snapshot.Throughput > 0)
@@ -70,36 +63,29 @@ func TestBenchmarkMetrics_RecordOperation(t *testing.T) {
 
 // TestBenchmarkSuite_RunAll tests running multiple benchmark tests
 func TestBenchmarkSuite_RunAll(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	ctx := context.Background()
 
-	// Create Docker test helper
-	helper, err := NewDockerTestHelper(ctx)
+	pool, err := NewPoolEnv(ctx)
 	require.NoError(t, err)
-	defer helper.Close()
+	defer pool.Close()
 
-	pool := helper.Pool()
-	
 	// Create benchmark suite
 	config := DefaultBenchmarkConfig()
 	config.Duration = 1 * time.Second
 	config.Concurrency = 1
-	
+
 	suite := NewBenchmarkSuite(config)
-	
+
 	// Add multiple tests
 	suite.AddTest(&SimpleBenchmarkTest{})
 	suite.AddTest(&InsertBenchmarkTest{})
 	suite.AddTest(&QueryBenchmarkTest{})
-	
+
 	// Run all tests
 	results, err := suite.RunAll(ctx, pool)
 	require.NoError(t, err)
 	require.Len(t, results, 3)
-	
+
 	// Verify all tests completed
 	for i, result := range results {
 		assert.NotEmpty(t, result.TestName)
@@ -109,103 +95,82 @@ func TestBenchmarkSuite_RunAll(t *testing.T) {
 
 // TestConnectionBenchmark tests connection performance
 func TestConnectionBenchmark(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	ctx := context.Background()
 
-	// Create Docker test helper
-	helper, err := NewDockerTestHelper(ctx)
+	pool, err := NewPoolEnv(ctx)
 	require.NoError(t, err)
-	defer helper.Close()
+	defer pool.Close()
 
-	pool := helper.Pool()
-	
 	// Create connection benchmark
 	config := DefaultBenchmarkConfig()
 	config.Duration = 2 * time.Second
 	config.Concurrency = 5
-	
+
 	runner := NewBenchmarkRunner(config, pool)
 	test := &ConnectionBenchmarkTest{}
-	
+
 	result, err := runner.RunBenchmark(ctx, test)
 	require.NoError(t, err)
-	
+
 	// Verify connection-specific metrics
 	assert.True(t, result.PeakConnections > 0)
 	assert.True(t, result.ThroughputOPS > 0)
-	
+
 	// Connection operations should be fast
 	assert.True(t, result.AvgLatency < 100*time.Millisecond)
 }
 
 // TestTransactionBenchmark tests transaction performance
 func TestTransactionBenchmark(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	ctx := context.Background()
-	
-	// Create Docker test helper
-	helper, err := NewDockerTestHelper(ctx)
+
+	pool, err := NewPoolEnv(ctx)
 	require.NoError(t, err)
-	defer helper.Close()
-	
-	pool := helper.Pool()
-	
+	defer pool.Close()
+
 	// Create transaction benchmark
 	config := DefaultBenchmarkConfig()
 	config.Duration = 3 * time.Second
 	config.Concurrency = 3
-	
+
 	runner := NewBenchmarkRunner(config, pool)
 	test := &TransactionBenchmarkTest{}
-	
+
 	result, err := runner.RunBenchmark(ctx, test)
 	require.NoError(t, err)
-	
+
 	// Verify transaction-specific results
 	assert.True(t, result.TotalOps > 0)
 	// SQLite may have some transaction conflicts in high concurrency, so allow some errors
 	assert.True(t, result.SuccessOps > 0) // At least some transactions should succeed
-	
+
 	// Transaction latency should be reasonable
 	assert.True(t, result.AvgLatency < 500*time.Millisecond)
 }
 
 // TestConcurrentBenchmark tests concurrent access performance
 func TestConcurrentBenchmark(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	ctx := context.Background()
 
-	// Create Docker test helper
-	helper, err := NewDockerTestHelper(ctx)
+	pool, err := NewPoolEnv(ctx)
 	require.NoError(t, err)
-	defer helper.Close()
-	
-	pool := helper.Pool()
-	
+	defer pool.Close()
+
 	// Create concurrent benchmark with high concurrency
 	config := DefaultBenchmarkConfig()
 	config.Duration = 2 * time.Second
 	config.Concurrency = 20 // High concurrency
-	
+
 	runner := NewBenchmarkRunner(config, pool)
 	test := &ConcurrentBenchmarkTest{}
-	
+
 	result, err := runner.RunBenchmark(ctx, test)
 	require.NoError(t, err)
-	
+
 	// Verify concurrent performance
 	assert.True(t, result.TotalOps > 0)
 	assert.True(t, result.ThroughputOPS > 0)
-	
+
 	// With high concurrency, we should see some latency variation
 	// Note: SQLite may not show much variation, so we just check basic ordering
 	assert.True(t, result.P95Latency >= result.P50Latency)
@@ -214,36 +179,29 @@ func TestConcurrentBenchmark(t *testing.T) {
 
 // TestBenchmarkResult_LatencyPercentiles tests latency percentile calculations
 func TestBenchmarkResult_LatencyPercentiles(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	ctx := context.Background()
 
-	// Create Docker test helper
-	helper, err := NewDockerTestHelper(ctx)
+	pool, err := NewPoolEnv(ctx)
 	require.NoError(t, err)
-	defer helper.Close()
-	
-	pool := helper.Pool()
-	
+	defer pool.Close()
+
 	// Create benchmark with enough operations to get meaningful percentiles
 	config := DefaultBenchmarkConfig()
 	config.Duration = 3 * time.Second
 	config.Concurrency = 5
-	
+
 	runner := NewBenchmarkRunner(config, pool)
 	test := &VariableLatencyBenchmarkTest{}
-	
+
 	result, err := runner.RunBenchmark(ctx, test)
 	require.NoError(t, err)
-	
+
 	// Verify percentile ordering
 	assert.True(t, result.MinLatency <= result.P50Latency)
 	assert.True(t, result.P50Latency <= result.P95Latency)
 	assert.True(t, result.P95Latency <= result.P99Latency)
 	assert.True(t, result.P99Latency <= result.MaxLatency)
-	
+
 	// Average should be reasonable
 	assert.True(t, result.AvgLatency > 0)
 }
@@ -255,12 +213,12 @@ func TestBenchmarkConfig_Validation(t *testing.T) {
 	assert.True(t, config.Duration > 0)
 	assert.True(t, config.Concurrency > 0)
 	assert.NotEmpty(t, config.TableName)
-	
+
 	// Test custom config
 	config.Duration = 10 * time.Second
 	config.Concurrency = 50
 	config.DataSize = 5000
-	
+
 	assert.Equal(t, 10*time.Second, config.Duration)
 	assert.Equal(t, 50, config.Concurrency)
 	assert.Equal(t, 5000, config.DataSize)
@@ -268,30 +226,23 @@ func TestBenchmarkConfig_Validation(t *testing.T) {
 
 // TestBenchmarkError_Handling tests error handling during benchmarks
 func TestBenchmarkError_Handling(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	ctx := context.Background()
 
-	// Create Docker test helper
-	helper, err := NewDockerTestHelper(ctx)
+	pool, err := NewPoolEnv(ctx)
 	require.NoError(t, err)
-	defer helper.Close()
-	
-	pool := helper.Pool()
-	
+	defer pool.Close()
+
 	// Create benchmark that will generate errors
 	config := DefaultBenchmarkConfig()
 	config.Duration = 2 * time.Second
 	config.Concurrency = 2
-	
+
 	runner := NewBenchmarkRunner(config, pool)
 	test := &ErrorBenchmarkTest{}
-	
+
 	result, err := runner.RunBenchmark(ctx, test)
 	require.NoError(t, err)
-	
+
 	// Should have some errors
 	assert.True(t, result.ErrorOps > 0)
 	assert.True(t, result.TotalOps > result.SuccessOps)
@@ -300,18 +251,11 @@ func TestBenchmarkError_Handling(t *testing.T) {
 
 // TestBenchmarkRunner_ProgressReporting tests progress reporting during long benchmarks
 func TestBenchmarkRunner_ProgressReporting(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	ctx := context.Background()
 
-	// Create Docker test helper
-	helper, err := NewDockerTestHelper(ctx)
+	pool, err := NewPoolEnv(ctx)
 	require.NoError(t, err)
-	defer helper.Close()
-
-	pool := helper.Pool()
+	defer pool.Close()
 
 	// Create benchmark with progress reporting
 	config := DefaultBenchmarkConfig()
@@ -679,17 +623,11 @@ func (t *ErrorBenchmarkTest) Cleanup(ctx context.Context, pool DatabasePool) err
 // Test specific benchmark implementations
 
 func TestSelectBenchmark(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	ctx := context.Background()
 
-	helper, err := NewDockerTestHelper(ctx)
+	pool, err := NewPoolEnv(ctx)
 	require.NoError(t, err)
-	defer helper.Close()
-
-	pool := helper.Pool()
+	defer pool.Close()
 
 	config := DefaultBenchmarkConfig()
 	config.Duration = 2 * time.Second
@@ -707,17 +645,11 @@ func TestSelectBenchmark(t *testing.T) {
 }
 
 func TestInsertPerformanceBenchmark(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	ctx := context.Background()
 
-	helper, err := NewDockerTestHelper(ctx)
+	pool, err := NewPoolEnv(ctx)
 	require.NoError(t, err)
-	defer helper.Close()
-
-	pool := helper.Pool()
+	defer pool.Close()
 
 	config := DefaultBenchmarkConfig()
 	config.Duration = 2 * time.Second
@@ -740,17 +672,11 @@ func TestInsertPerformanceBenchmark(t *testing.T) {
 }
 
 func TestBulkOperationBenchmark(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	ctx := context.Background()
 
-	helper, err := NewDockerTestHelper(ctx)
+	pool, err := NewPoolEnv(ctx)
 	require.NoError(t, err)
-	defer helper.Close()
-
-	pool := helper.Pool()
+	defer pool.Close()
 
 	config := DefaultBenchmarkConfig()
 	config.Duration = 2 * time.Second
@@ -777,17 +703,11 @@ func TestBulkOperationBenchmark(t *testing.T) {
 }
 
 func TestMixedWorkloadBenchmark(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	ctx := context.Background()
 
-	helper, err := NewDockerTestHelper(ctx)
+	pool, err := NewPoolEnv(ctx)
 	require.NoError(t, err)
-	defer helper.Close()
-
-	pool := helper.Pool()
+	defer pool.Close()
 
 	config := DefaultBenchmarkConfig()
 	config.Duration = 3 * time.Second
@@ -814,17 +734,11 @@ func TestMixedWorkloadBenchmark(t *testing.T) {
 }
 
 func TestUpdateBenchmark(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	ctx := context.Background()
 
-	helper, err := NewDockerTestHelper(ctx)
+	pool, err := NewPoolEnv(ctx)
 	require.NoError(t, err)
-	defer helper.Close()
-
-	pool := helper.Pool()
+	defer pool.Close()
 
 	config := DefaultBenchmarkConfig()
 	config.Duration = 2 * time.Second

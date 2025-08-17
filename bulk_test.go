@@ -6,10 +6,6 @@ import (
 )
 
 func TestBulkInsert_Simple(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -46,10 +42,6 @@ func TestBulkInsert_Simple(t *testing.T) {
 }
 
 func TestInsertOnDuplicate_Simple(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -70,10 +62,6 @@ func TestInsertOnDuplicate_Simple(t *testing.T) {
 }
 
 func TestBulkInsert_EmptyRows_Error(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -89,10 +77,6 @@ func TestBulkInsert_EmptyRows_Error(t *testing.T) {
 }
 
 func TestBulkInsert_ColumnMismatch_Error(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	if err != nil {
 		t.Fatal(err)

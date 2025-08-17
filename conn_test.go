@@ -8,17 +8,23 @@ import (
 )
 
 func TestWithConn_AutoReturnAndFnError(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer helper.Close()
 
-	p := helper.Pool()
+	// Create a pool with MaxOpen=1 to test timeout behavior
+	config := helper.Config()
+	config.Pool.MaxOpen = 1
+	config.Pool.MaxIdle = 1
+
+	ctx := context.Background()
+	p, err := NewPool(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.Close()
 
 	// First goroutine holds the only connection until released
 	release := make(chan struct{})
@@ -47,12 +53,17 @@ func TestWithConn_AutoReturnAndFnError(t *testing.T) {
 	ctx2, cancel2 := context.WithTimeout(context.Background(), time.Second)
 	defer cancel2()
 	conn, err := p.Acquire(ctx2)
-	if err != nil { t.Fatalf("unexpected acquire error: %v", err) }
-	if err := conn.Close(); err != nil { t.Fatalf("close error: %v", err) }
+	if err != nil {
+		t.Fatalf("unexpected acquire error: %v", err)
+	}
+	if err := conn.Close(); err != nil {
+		t.Fatalf("close error: %v", err)
+	}
 
 	// WithConn should propagate fn error
 	sent := errors.New("sentinel")
 	err = p.WithConn(context.Background(), func(c DatabaseConn) error { return sent })
-	if !errors.Is(err, sent) { t.Fatalf("expected sentinel error, got %v", err) }
+	if !errors.Is(err, sent) {
+		t.Fatalf("expected sentinel error, got %v", err)
+	}
 }
-

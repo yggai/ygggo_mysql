@@ -89,10 +89,6 @@ func TestProbeConfig_Defaults(t *testing.T) {
 }
 
 func TestConnectionProbe_BasicProbing(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -141,10 +137,6 @@ func TestConnectionProbe_BasicProbing(t *testing.T) {
 }
 
 func TestConnectionProbe_ProbeFailure(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -184,10 +176,6 @@ func TestConnectionProbe_ProbeFailure(t *testing.T) {
 }
 
 func TestConnectionProbe_EventHandling(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -348,10 +336,6 @@ func (h *TestProbeEventHandler) Clear() {
 }
 
 func TestConnectionProbe_ForceProbe(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -386,10 +370,6 @@ func TestConnectionProbe_ForceProbe(t *testing.T) {
 }
 
 func TestConnectionProbe_ConfigUpdate(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -425,10 +405,6 @@ func TestConnectionProbe_ConfigUpdate(t *testing.T) {
 }
 
 func TestConnectionProbe_Metrics(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -467,10 +443,6 @@ func TestConnectionProbe_Metrics(t *testing.T) {
 }
 
 func TestConnectionProbe_StatusTransitions(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -514,10 +486,6 @@ func TestConnectionProbe_StatusTransitions(t *testing.T) {
 }
 
 func TestConnectionProbe_EventSequence(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()

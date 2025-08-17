@@ -7,10 +7,6 @@ import (
 )
 
 func TestLeakDetection_ReportsWhenHeldBeyondThreshold(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -41,10 +37,6 @@ func TestLeakDetection_ReportsWhenHeldBeyondThreshold(t *testing.T) {
 }
 
 func TestLeakDetection_NoReportWhenWithinThreshold(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	if err != nil {
 		t.Fatal(err)

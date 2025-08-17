@@ -109,10 +109,6 @@ func TestPoolConfig_Presets(t *testing.T) {
 }
 
 func TestPoolManager_BasicOperations(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -143,10 +139,6 @@ func TestPoolManager_BasicOperations(t *testing.T) {
 }
 
 func TestPoolManager_Statistics(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -182,10 +174,6 @@ func TestPoolManager_Statistics(t *testing.T) {
 }
 
 func TestPoolManager_HealthCheck(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -211,10 +199,6 @@ func TestPoolManager_HealthCheck(t *testing.T) {
 }
 
 func TestPoolManager_ConfigUpdate(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -246,10 +230,6 @@ func TestPoolManager_ConfigUpdate(t *testing.T) {
 }
 
 func TestPoolManager_WarmUp(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -274,10 +254,6 @@ func TestPoolManager_WarmUp(t *testing.T) {
 }
 
 func TestPoolManager_Scaling(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -322,10 +298,6 @@ func TestPoolManager_Scaling(t *testing.T) {
 }
 
 func TestPoolManager_Resize(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -360,10 +332,6 @@ func TestPoolManager_Resize(t *testing.T) {
 }
 
 func TestPoolManager_DrainConnections(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -395,10 +363,6 @@ func TestPoolManager_DrainConnections(t *testing.T) {
 }
 
 func TestPoolManager_HealthAndUtilization(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()

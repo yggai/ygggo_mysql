@@ -6,10 +6,6 @@ import (
 )
 
 func TestStmtCache_PerConn_CachesPrepare(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -46,10 +42,6 @@ func TestStmtCache_PerConn_CachesPrepare(t *testing.T) {
 }
 
 func TestStmtCache_LRUEvicts(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -79,10 +71,6 @@ func TestStmtCache_LRUEvicts(t *testing.T) {
 }
 
 func TestStmtCache_PerConn_Isolated(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	if err != nil {
 		t.Fatal(err)

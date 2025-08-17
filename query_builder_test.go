@@ -9,10 +9,6 @@ import (
 )
 
 func TestQueryBuilder_BasicSelect(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -73,10 +69,6 @@ func TestQueryBuilder_BasicSelect(t *testing.T) {
 }
 
 func TestQueryBuilder_SelectWithWhere(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -144,10 +136,6 @@ func TestQueryBuilder_SelectWithWhere(t *testing.T) {
 }
 
 func TestQueryBuilder_SelectWithOrderByAndLimit(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -210,10 +198,6 @@ func TestQueryBuilder_SelectWithOrderByAndLimit(t *testing.T) {
 }
 
 func TestQueryBuilder_Insert(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -272,10 +256,6 @@ func TestQueryBuilder_Insert(t *testing.T) {
 }
 
 func TestQueryBuilder_Update(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -334,10 +314,6 @@ func TestQueryBuilder_Update(t *testing.T) {
 }
 
 func TestQueryBuilder_Delete(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -402,10 +378,6 @@ func TestQueryBuilder_Delete(t *testing.T) {
 }
 
 func TestQueryBuilder_MultipleWhereConditions(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
@@ -473,10 +445,6 @@ func TestQueryBuilder_MultipleWhereConditions(t *testing.T) {
 }
 
 func TestQueryBuilder_JoinOperations(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping Docker test in short mode")
-	}
-
 	helper, err := NewDockerTestHelper(context.Background())
 	require.NoError(t, err)
 	defer helper.Close()
