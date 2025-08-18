@@ -7,7 +7,7 @@
 
 [中文文档](README-zh.md) | English
 
-A comprehensive, production-ready MySQL database access library for Go, designed for enterprise applications requiring high performance, reliability, and comprehensive observability. Built with TDD (Test-Driven Development) principles to ensure code quality and functional stability.
+A comprehensive, production-ready MySQL database access library for Go, designed for enterprise applications requiring high performance, reliability, and ease of use. Built with TDD (Test-Driven Development) principles to ensure code quality and functional stability. Features deep integration with environment variables for zero-configuration deployment and Docker-based MySQL management.
 
 ## ✨ Core Features
 
@@ -16,12 +16,14 @@ A comprehensive, production-ready MySQL database access library for Go, designed
 - **Connection Leak Detection**: Automatic detection and reporting of long-held connections
 - **Health Monitoring**: Real-time monitoring of pool status and database health
 - **Auto-Reconnection**: Automatic reconnection on network failures
-- **Environment Variable Configuration**: Support for automatic configuration from environment variables
+- **Zero-Configuration Setup**: Deep integration with ygggo_env for automatic environment variable configuration
+- **Context-Free API**: Simplified API design with optional context support
 
 ### 🗄️ Database Management
-- **Auto Database Creation**: Detect and automatically create non-existent databases
+- **Auto Database Creation**: Detect and automatically create non-existent databases during connection
 - **Database Operations**: Complete support for querying, creating, and deleting databases
-- **Docker Integration**: Automatic management of Docker MySQL containers
+- **Docker Integration**: Full Docker MySQL container lifecycle management
+- **Environment-Driven Setup**: Automatic MySQL container creation based on environment variables
 
 ### 📊 Table Management
 - **Table Structure Management**: Create, delete, and query tables based on struct tags
@@ -53,10 +55,10 @@ A comprehensive, production-ready MySQL database access library for Go, designed
 - **Connection Reuse**: Efficient connection resource utilization
 
 ### 📊 Observability
-- **OpenTelemetry Integration**: Distributed tracing support
-- **Prometheus Metrics**: Prometheus-compatible metrics collection
-- **Structured Logging**: Configurable structured logging
+- **Integrated Logging**: Deep integration with ygggo_log for structured logging
 - **Slow Query Analysis**: Automatic slow query detection and analysis
+- **Performance Monitoring**: Built-in performance metrics and monitoring
+- **Connection Health Tracking**: Real-time connection pool health monitoring
 
 ### 🛠️ Developer Experience
 - **Type Safety**: Strongly-typed query builders
@@ -78,7 +80,6 @@ go get github.com/yggai/ygggo_mysql
 package main
 
 import (
-    "context"
     "fmt"
     "log"
 
@@ -91,15 +92,14 @@ func main() {
     gge.LoadEnv()
 
     // Create database connection pool from environment variables
-    ctx := context.Background()
-    pool, err := ggm.NewPoolEnv(ctx)
+    pool, err := ggm.NewPoolEnv()
     if err != nil {
         log.Fatalf("Connection failed: %v", err)
     }
     defer pool.Close()
 
     // Test connection
-    err = pool.Ping(ctx)
+    err = pool.Ping()
     if err != nil {
         log.Fatalf("Ping failed: %v", err)
     }
@@ -290,13 +290,17 @@ if err != nil {
 ### Docker MySQL Management
 
 ```go
+import "context"
+
+ctx := context.Background()
+
 // Check if Docker is installed
-if !ggm.IsDockerInstalled() {
+if !ggm.IsDockerInstalled(ctx) {
     log.Fatal("Docker not installed")
 }
 
 // Automatically install MySQL container
-err := ggm.NewMySQL()
+err := ggm.NewMySQL(ctx)
 if err != nil {
     log.Printf("Failed to install MySQL: %v", err)
 } else {
@@ -304,14 +308,14 @@ if err != nil {
 }
 
 // Check if MySQL is running
-if ggm.IsMySQL() {
+if ggm.IsMySQL(ctx) {
     fmt.Println("MySQL container is running")
 } else {
     fmt.Println("MySQL container is not running")
 }
 
 // Delete MySQL container
-err = ggm.DeleteMySQL()
+err = ggm.DeleteMySQL(ctx)
 if err != nil {
     log.Printf("Failed to delete MySQL: %v", err)
 } else {
@@ -372,11 +376,13 @@ err = pool.WithConn(ctx, func(conn ggm.DatabaseConn) error {
 
 ### Benchmark Results
 
-| Operation Type | QPS | Avg Latency | P99 Latency |
-|---------------|-----|-------------|-------------|
-| Simple Query | 50,000+ | 0.2ms | 1ms |
-| Transaction | 25,000+ | 0.5ms | 2ms |
-| Bulk Insert | 100,000+ | 0.1ms | 0.5ms |
+The library includes comprehensive benchmark testing capabilities. Run benchmarks with:
+
+```bash
+go test -bench=. -timeout 30s
+```
+
+Performance characteristics vary based on hardware, network conditions, and MySQL configuration. The library is optimized for high-throughput scenarios with efficient connection pooling and prepared statement caching.
 
 ### Performance Optimizations
 
@@ -423,10 +429,12 @@ go test -cover -timeout 30s
 
 ### Testing Features
 
+- **TDD-Based Development**: All features developed following Test-Driven Development principles
 - **Automatic Container Management**: Automatically detects and starts MySQL test containers
 - **Test Independence**: Each test case runs independently without interference
 - **Data Cleanup**: Automatically cleans up test data to ensure repeatable tests
 - **30-Second Timeout**: All tests complete within 30 seconds for fast feedback
+- **Comprehensive Coverage**: High test coverage ensuring code quality and reliability
 
 ## 📚 Documentation
 
@@ -527,17 +535,18 @@ For commercial licensing and enterprise support:
 
 ## 🗺 Roadmap
 
-### Current Version (v1.0)
+### Current Version (v1.0.2)
 - ✅ Core functionality implementation
-- ✅ Environment variable configuration support
-- ✅ Docker MySQL management
-- ✅ Database management features
-- ✅ Table management features
-- ✅ Table data management (complete CRUD)
-- ✅ Data import/export (SQL/CSV/JSON)
-- ✅ Basic observability features
+- ✅ Environment variable configuration support (ygggo_env integration)
+- ✅ Docker MySQL management (complete lifecycle)
+- ✅ Database management features (auto-creation, CRUD operations)
+- ✅ Table management features (ggm tag support)
+- ✅ Table data management (complete CRUD with batch operations)
+- ✅ Data import/export (SQL/CSV/JSON formats)
+- ✅ Integrated logging system (ygggo_log integration)
+- ✅ Simplified dependencies (removed OpenTelemetry)
 - ✅ Complete documentation and examples
-- ✅ Comprehensive test coverage
+- ✅ Comprehensive test coverage (TDD-based)
 
 ### Next Version (v1.1)
 - 🔄 API stabilization
@@ -557,14 +566,14 @@ For commercial licensing and enterprise support:
 
 ### TDD-Based Development
 - **Test-Driven**: All features developed with test-driven approach
-- **High-Quality Code**: Strict code quality standards
-- **Continuous Integration**: Automated testing and deployment
+- **High-Quality Code**: Strict code quality standards and comprehensive test coverage
+- **Fast Feedback**: All tests complete within 30 seconds for rapid development cycles
 
 ### Enterprise-Grade Features
-- **Production-Ready**: Thoroughly tested for production use
-- **High Performance**: Optimized connection pooling and query performance
-- **Observability**: Complete monitoring and logging support
-- **Easy to Use**: Clean API design
+- **Production-Ready**: Thoroughly tested for production use with automatic database creation
+- **Zero-Configuration**: Deep environment variable integration for seamless deployment
+- **Docker Integration**: Complete MySQL container lifecycle management
+- **Developer-Friendly**: Clean API design with simplified context handling
 
 ## 🙏 Acknowledgments
 

@@ -7,7 +7,7 @@
 
 中文文档 | [English](README.md)
 
-一个功能完整、生产就绪的 MySQL 数据库访问库，专为企业级应用设计，提供高性能、高可靠性和全面的可观测性支持。基于 TDD 开发规范构建，确保代码质量和功能稳定性。
+一个功能完整、生产就绪的 MySQL 数据库访问库，专为企业级应用设计，提供高性能、高可靠性和易用性。基于 TDD 开发规范构建，确保代码质量和功能稳定性。深度集成环境变量实现零配置部署，并提供基于 Docker 的 MySQL 管理功能。
 
 ## ✨ 核心特性
 
@@ -16,12 +16,14 @@
 - **连接泄漏检测**: 自动检测和报告长时间持有的连接
 - **健康监控**: 实时监控连接池状态和数据库健康状况
 - **自动重连**: 网络故障时的自动重连机制
-- **环境变量配置**: 支持从环境变量自动读取配置
+- **零配置设置**: 深度集成 ygggo_env 实现环境变量自动配置
+- **简化 API**: 简洁的 API 设计，支持可选的 context 参数
 
 ### 🗄️ 数据库管理
-- **自动创建数据库**: 检测并自动创建不存在的数据库
+- **自动创建数据库**: 连接时检测并自动创建不存在的数据库
 - **数据库操作**: 查询、创建、删除数据库的完整支持
-- **Docker 集成**: 自动管理 Docker MySQL 容器
+- **Docker 集成**: 完整的 Docker MySQL 容器生命周期管理
+- **环境驱动设置**: 基于环境变量自动创建 MySQL 容器
 
 ### 📊 表格管理
 - **表结构管理**: 基于结构体标签的表创建、删除和查询
@@ -53,10 +55,10 @@
 - **连接复用**: 高效的连接资源利用
 
 ### 📊 可观测性
-- **OpenTelemetry 集成**: 分布式链路追踪支持
-- **Prometheus 指标**: Prometheus 兼容的指标收集
-- **结构化日志**: 可配置的结构化日志记录
+- **集成日志系统**: 深度集成 ygggo_log 提供结构化日志记录
 - **慢查询分析**: 自动慢查询检测和分析
+- **性能监控**: 内置性能指标和监控功能
+- **连接健康追踪**: 实时连接池健康状态监控
 
 ### 🛠️ 开发体验
 - **类型安全**: 强类型查询构建器
@@ -78,7 +80,6 @@ go get github.com/yggai/ygggo_mysql
 package main
 
 import (
-    "context"
     "fmt"
     "log"
 
@@ -91,15 +92,14 @@ func main() {
     gge.LoadEnv()
 
     // 自动读取环境变量里面的值创建数据库连接池对象
-    ctx := context.Background()
-    pool, err := ggm.NewPoolEnv(ctx)
+    pool, err := ggm.NewPoolEnv()
     if err != nil {
         log.Fatalf("连接失败: %v", err)
     }
     defer pool.Close()
 
     // 测试连接
-    err = pool.Ping(ctx)
+    err = pool.Ping()
     if err != nil {
         log.Fatalf("Ping失败: %v", err)
     }
@@ -290,13 +290,17 @@ if err != nil {
 ### Docker MySQL 管理
 
 ```go
+import "context"
+
+ctx := context.Background()
+
 // 检测 Docker 是否安装
-if !ggm.IsDockerInstalled() {
+if !ggm.IsDockerInstalled(ctx) {
     log.Fatal("Docker 未安装")
 }
 
 // 自动安装 MySQL 容器
-err := ggm.NewMySQL()
+err := ggm.NewMySQL(ctx)
 if err != nil {
     log.Printf("安装 MySQL 失败: %v", err)
 } else {
@@ -304,14 +308,14 @@ if err != nil {
 }
 
 // 检测 MySQL 是否运行
-if ggm.IsMySQL() {
+if ggm.IsMySQL(ctx) {
     fmt.Println("MySQL 容器正在运行")
 } else {
     fmt.Println("MySQL 容器未运行")
 }
 
 // 删除 MySQL 容器
-err = ggm.DeleteMySQL()
+err = ggm.DeleteMySQL(ctx)
 if err != nil {
     log.Printf("删除 MySQL 失败: %v", err)
 } else {
@@ -372,11 +376,13 @@ err = pool.WithConn(ctx, func(conn ggm.DatabaseConn) error {
 
 ### 基准测试结果
 
-| 操作类型 | QPS | 平均延迟 | P99 延迟 |
-|---------|-----|---------|---------|
-| 简单查询 | 50,000+ | 0.2ms | 1ms |
-| 事务操作 | 25,000+ | 0.5ms | 2ms |
-| 批量插入 | 100,000+ | 0.1ms | 0.5ms |
+本库包含完整的基准测试功能。运行基准测试：
+
+```bash
+go test -bench=. -timeout 30s
+```
+
+性能特征因硬件、网络条件和 MySQL 配置而异。本库针对高吞吐量场景进行了优化，具有高效的连接池和预处理语句缓存。
 
 ### 性能优化
 
@@ -423,10 +429,12 @@ go test -cover -timeout 30s
 
 ### 测试特性
 
+- **TDD 开发规范**: 所有功能都遵循测试驱动开发原则
 - **自动容器管理**: 自动检测和启动 MySQL 测试容器
 - **测试独立性**: 每个测试用例独立运行，不相互影响
 - **数据清理**: 自动清理测试数据，确保测试可重复运行
 - **30秒超时**: 所有测试在30秒内完成，确保快速反馈
+- **全面覆盖**: 高测试覆盖率确保代码质量和可靠性
 
 ## 📚 文档
 
@@ -527,17 +535,18 @@ go test -cover -timeout 30s
 
 ## 🗺 发展路线
 
-### 当前版本 (v1.0)
+### 当前版本 (v1.0.2)
 - ✅ 核心功能实现
-- ✅ 环境变量配置支持
-- ✅ Docker MySQL 管理
-- ✅ 数据库管理功能
-- ✅ 表格管理功能
-- ✅ 表格数据管理（完整 CRUD）
-- ✅ 数据导入导出（SQL/CSV/JSON）
-- ✅ 基础可观测性功能
+- ✅ 环境变量配置支持（ygggo_env 集成）
+- ✅ Docker MySQL 管理（完整生命周期）
+- ✅ 数据库管理功能（自动创建、CRUD 操作）
+- ✅ 表格管理功能（ggm 标签支持）
+- ✅ 表格数据管理（完整 CRUD 和批量操作）
+- ✅ 数据导入导出（SQL/CSV/JSON 格式）
+- ✅ 集成日志系统（ygggo_log 集成）
+- ✅ 简化依赖（移除 OpenTelemetry）
 - ✅ 完整文档和示例
-- ✅ 全面测试覆盖
+- ✅ 全面测试覆盖（基于 TDD）
 
 ### 下一版本 (v1.1)
 - 🔄 API 稳定化
@@ -557,14 +566,14 @@ go test -cover -timeout 30s
 
 ### 基于 TDD 开发
 - **测试驱动**: 所有功能都基于测试驱动开发
-- **高质量代码**: 严格的代码质量标准
-- **持续集成**: 自动化测试和部署
+- **高质量代码**: 严格的代码质量标准和全面的测试覆盖
+- **快速反馈**: 所有测试在30秒内完成，支持快速开发周期
 
 ### 企业级特性
-- **生产就绪**: 经过充分测试，可用于生产环境
-- **高性能**: 优化的连接池和查询性能
-- **可观测性**: 完整的监控和日志支持
-- **易于使用**: 简洁的 API 设计
+- **生产就绪**: 经过充分测试，支持自动数据库创建的生产环境
+- **零配置**: 深度环境变量集成，实现无缝部署
+- **Docker 集成**: 完整的 MySQL 容器生命周期管理
+- **开发友好**: 简洁的 API 设计，简化的 context 处理
 
 ## 🙏 致谢
 
