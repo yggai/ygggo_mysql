@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"time"
-
-	"go.opentelemetry.io/otel/trace"
 )
 
 // Tx represents a database transaction with automatic management and observability.
@@ -52,7 +50,7 @@ import (
 // Tx is NOT safe for concurrent use. Each transaction should be used
 // by only one goroutine. The transaction context ensures isolation
 // from other concurrent operations.
-type Tx struct{
+type Tx struct {
 	// inner is the underlying database transaction
 	inner *sql.Tx
 
@@ -102,13 +100,10 @@ type Tx struct{
 // This method is NOT safe for concurrent use within the same transaction.
 // Each transaction should be used by only one goroutine.
 func (tx *Tx) Exec(ctx context.Context, query string, args ...any) (sql.Result, error) {
-	if tx == nil || tx.inner == nil { return nil, sql.ErrTxDone }
-	if tx.pool != nil && tx.pool.telemetryEnabled {
-		ctx, span := tx.pool.startSpan(ctx, "exec", query)
-		result, err := tx.inner.ExecContext(ctx, query, args...)
-		tx.pool.finishSpan(span, err)
-		return result, err
+	if tx == nil || tx.inner == nil {
+		return nil, sql.ErrTxDone
 	}
+
 	return tx.inner.ExecContext(ctx, query, args...)
 }
 
@@ -205,21 +200,23 @@ func (tx *Tx) Exec(ctx context.Context, query string, args ...any) (sql.Result, 
 // transactions simultaneously, and each will receive its own isolated
 // transaction context.
 func (p *Pool) WithinTx(ctx context.Context, fn func(DatabaseTx) error, opts ...any) error {
-	if p == nil || p.db == nil { return errors.New("nil pool") }
+	if p == nil || p.db == nil {
+		return errors.New("nil pool")
+	}
 
 	start := time.Now()
-	var span trace.Span
-	if p.telemetryEnabled {
-		ctx, span = p.startSpan(ctx, "transaction", "")
-	}
 
 	op := func() error {
 		tx, err := p.db.BeginTx(ctx, nil)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		wrap := &Tx{inner: tx, pool: p}
 		err = fn(wrap)
 		if err == nil {
-			if cerr := tx.Commit(); cerr != nil { return cerr }
+			if cerr := tx.Commit(); cerr != nil {
+				return cerr
+			}
 			return nil
 		}
 		_ = tx.Rollback()
@@ -240,15 +237,6 @@ func (p *Pool) WithinTx(ctx context.Context, fn func(DatabaseTx) error, opts ...
 		p.logTransaction(ctx, event, duration, err)
 	}
 
-	// Record metrics
-	if p.metricsEnabled {
-		p.recordTransaction(ctx, duration, err)
-	}
-
-	if p.telemetryEnabled {
-		p.finishSpan(span, err)
-	}
-
 	return err
 }
 
@@ -265,9 +253,13 @@ func isRetryable(err error) bool {
 
 // backoffSleep performs simple sleep; will be replaced by cenkalti/backoff later.
 func backoffSleep(pol RetryPolicy, attempt int) {
-	if attempt <= 0 { return }
+	if attempt <= 0 {
+		return
+	}
 	d := pol.BaseBackoff
-	if d <= 0 { d = 10 * time.Millisecond }
+	if d <= 0 {
+		d = 10 * time.Millisecond
+	}
 	sleep := time.Duration(attempt) * d
 	time.Sleep(sleep)
 }

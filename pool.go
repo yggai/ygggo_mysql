@@ -11,7 +11,6 @@ import (
 	"time"
 
 	mysql "github.com/go-sql-driver/mysql"
-	"go.opentelemetry.io/otel/metric"
 )
 
 // Pool is a production-ready database connection pool with advanced features.
@@ -58,13 +57,7 @@ type Pool struct {
 	// Retry policy for handling transient failures
 	retry RetryPolicy
 
-	// Observability features
-	telemetryEnabled bool // OpenTelemetry tracing enabled
-
-	// Metrics collection
-	metricsEnabled bool                 // Prometheus metrics enabled
-	meterProvider  metric.MeterProvider // OpenTelemetry meter provider
-	metrics        *Metrics             // Metrics collector instance
+	// Observability features (simplified)
 
 	// Logging configuration
 	loggingEnabled     bool          // Structured logging enabled

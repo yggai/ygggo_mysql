@@ -55,7 +55,7 @@ type BorrowLeak struct {
 // Conn is NOT safe for concurrent use. Each connection should be used
 // by only one goroutine at a time. Use separate connections for concurrent
 // operations.
-type Conn struct{
+type Conn struct {
 	// inner is the underlying database connection
 	inner *sql.Conn
 
@@ -123,7 +123,9 @@ type Conn struct{
 // WithConn simultaneously, and each will receive its own connection.
 func (p *Pool) WithConn(ctx context.Context, fn func(DatabaseConn) error) error {
 	conn, err := p.Acquire(ctx)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	defer conn.Close()
 	return fn(conn)
 }
@@ -133,38 +135,53 @@ func (c *Conn) EnableStmtCache(capacity int) { c.cache = newStmtCache(capacity) 
 
 // ExecCached executes using a cached prepared statement when enabled.
 func (c *Conn) ExecCached(ctx context.Context, query string, args ...any) (sql.Result, error) {
-	if c == nil || c.inner == nil { return nil, sql.ErrConnDone }
-	if c.cache == nil { return c.Exec(ctx, query, args...) }
+	if c == nil || c.inner == nil {
+		return nil, sql.ErrConnDone
+	}
+	if c.cache == nil {
+		return c.Exec(ctx, query, args...)
+	}
 	st, _, err := c.cache.getOrPrepare(ctx, c.inner, query)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return st.ExecContext(ctx, args...)
 }
 
 // QueryCached runs a query using stmt cache when enabled.
 func (c *Conn) QueryCached(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
-	if c == nil || c.inner == nil { return nil, sql.ErrConnDone }
-	if c.cache == nil { return c.Query(ctx, query, args...) }
+	if c == nil || c.inner == nil {
+		return nil, sql.ErrConnDone
+	}
+	if c.cache == nil {
+		return c.Query(ctx, query, args...)
+	}
 	st, _, err := c.cache.getOrPrepare(ctx, c.inner, query)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return st.QueryContext(ctx, args...)
 }
 
 // Acquire gets a connection from the underlying *sql.DB honoring context.
 func (p *Pool) Acquire(ctx context.Context) (DatabaseConn, error) {
-	if p == nil || p.db == nil { return nil, errors.New("nil pool") }
+	if p == nil || p.db == nil {
+		return nil, errors.New("nil pool")
+	}
 	c, err := p.db.Conn(ctx)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	conn := &Conn{inner: c, p: p}
 	conn.markAcquired()
-	// Record connection acquisition for metrics
-	if p.metricsEnabled {
-		p.recordConnectionAcquired(ctx)
-	}
+
 	return conn, nil
 }
 
 func (c *Conn) markAcquired() {
-	if c == nil || c.p == nil { return }
+	if c == nil || c.p == nil {
+		return
+	}
 	ns := time.Now().UnixNano()
 	atomic.StoreInt64(&c.acqNS, ns)
 	c.p.onBorrow(ns)
@@ -172,16 +189,13 @@ func (c *Conn) markAcquired() {
 
 // Close returns the connection to the pool.
 func (c *Conn) Close() error {
-	if c == nil || c.inner == nil { return nil }
-
-	// TODO: Re-enable connection metrics after fixing deadlock issues
-	// if c.p != nil && c.p.metricsEnabled && c.acqNS > 0 {
-	//     duration := time.Duration(time.Now().UnixNano() - c.acqNS)
-	//     c.p.recordConnectionReleased(context.Background(), duration)
-	// }
+	if c == nil || c.inner == nil {
+		return nil
+	}
 
 	c.p.onReturn()
-	if c.cache != nil { c.cache.closeAll() }
+	if c.cache != nil {
+		c.cache.closeAll()
+	}
 	return c.inner.Close()
 }
-

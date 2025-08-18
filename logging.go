@@ -2,6 +2,7 @@ package ygggo_mysql
 
 import (
 	"context"
+	"database/sql"
 	"log/slog"
 	"os"
 	"time"
@@ -17,14 +18,21 @@ type LoggingConfig struct {
 }
 
 var (
-	defaultLogger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
+	defaultLogger = func() *slog.Logger {
+		// Prefer ygggo_log if available via env; fall back to JSON slog
+		// Note: calling InitLogEnv is idempotent and cheap.
+		if lg := newYgggoSlogLoggerFromEnv(); lg != nil {
+			return lg
+		}
+		return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	}()
 )
 
 // EnableLogging enables or disables structured logging for this pool
 func (p *Pool) EnableLogging(enabled bool) {
-	if p == nil { return }
+	if p == nil {
+		return
+	}
 	p.loggingEnabled = enabled
 	if enabled && p.logger == nil {
 		p.logger = defaultLogger
@@ -33,7 +41,9 @@ func (p *Pool) EnableLogging(enabled bool) {
 
 // SetLogger sets a custom logger for this pool
 func (p *Pool) SetLogger(logger *slog.Logger) {
-	if p == nil { return }
+	if p == nil {
+		return
+	}
 	p.logger = logger
 }
 
@@ -41,7 +51,9 @@ func (p *Pool) SetLogger(logger *slog.Logger) {
 
 // logQuery logs database query execution with structured fields
 func (p *Pool) logQuery(ctx context.Context, operation, query string, args []any, duration time.Duration, err error) {
-	if p == nil || !p.loggingEnabled || p.logger == nil { return }
+	if p == nil || !p.loggingEnabled || p.logger == nil {
+		return
+	}
 
 	// Prepare log attributes
 	attrs := []slog.Attr{
@@ -57,11 +69,11 @@ func (p *Pool) logQuery(ctx context.Context, operation, query string, args []any
 
 	// Add error information
 	if err != nil {
-		attrs = append(attrs, 
+		attrs = append(attrs,
 			slog.String("status", "error"),
 			slog.String("error", err.Error()),
 		)
-		
+
 		// Add MySQL-specific error code if available
 		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
 			attrs = append(attrs, slog.Int("error_code", int(mysqlErr.Number)))
@@ -87,9 +99,39 @@ func (p *Pool) logQuery(ctx context.Context, operation, query string, args []any
 	}
 }
 
+// instrumentedExecWithLogging wraps exec execution with logging
+func (p *Pool) instrumentedExecWithLogging(ctx context.Context, conn *sql.Conn, query string, args ...any) (sql.Result, error) {
+	start := time.Now()
+	result, err := conn.ExecContext(ctx, query, args...)
+	duration := time.Since(start)
+
+	// Log the execution
+	if p.loggingEnabled {
+		p.logQuery(ctx, "exec", query, args, duration, err)
+	}
+
+	return result, err
+}
+
+// instrumentedQueryWithLogging wraps query execution with logging
+func (p *Pool) instrumentedQueryWithLogging(ctx context.Context, conn *sql.Conn, query string, args ...any) (*sql.Rows, error) {
+	start := time.Now()
+	rs, err := conn.QueryContext(ctx, query, args...)
+	duration := time.Since(start)
+
+	// Log the query
+	if p.loggingEnabled {
+		p.logQuery(ctx, "query", query, args, duration, err)
+	}
+
+	return rs, err
+}
+
 // logConnection logs database connection events
 func (p *Pool) logConnection(ctx context.Context, event string, duration time.Duration, err error) {
-	if p == nil || !p.loggingEnabled || p.logger == nil { return }
+	if p == nil || !p.loggingEnabled || p.logger == nil {
+		return
+	}
 
 	attrs := []slog.Attr{
 		slog.String("event", event),
@@ -97,7 +139,7 @@ func (p *Pool) logConnection(ctx context.Context, event string, duration time.Du
 	}
 
 	if err != nil {
-		attrs = append(attrs, 
+		attrs = append(attrs,
 			slog.String("status", "error"),
 			slog.String("error", err.Error()),
 		)
@@ -110,7 +152,9 @@ func (p *Pool) logConnection(ctx context.Context, event string, duration time.Du
 
 // logTransaction logs database transaction events
 func (p *Pool) logTransaction(ctx context.Context, event string, duration time.Duration, err error) {
-	if p == nil || !p.loggingEnabled || p.logger == nil { return }
+	if p == nil || !p.loggingEnabled || p.logger == nil {
+		return
+	}
 
 	attrs := []slog.Attr{
 		slog.String("event", event),
@@ -118,7 +162,7 @@ func (p *Pool) logTransaction(ctx context.Context, event string, duration time.D
 	}
 
 	if err != nil {
-		attrs = append(attrs, 
+		attrs = append(attrs,
 			slog.String("status", "error"),
 			slog.String("error", err.Error()),
 		)
@@ -131,7 +175,9 @@ func (p *Pool) logTransaction(ctx context.Context, event string, duration time.D
 
 // logConnectionPool logs connection pool statistics
 func (p *Pool) logConnectionPool(ctx context.Context, stats PoolStats) {
-	if p == nil || !p.loggingEnabled || p.logger == nil { return }
+	if p == nil || !p.loggingEnabled || p.logger == nil {
+		return
+	}
 
 	attrs := []slog.Attr{
 		slog.Int("active_connections", stats.ActiveConnections),
@@ -149,8 +195,8 @@ type PoolStats struct {
 	ActiveConnections int
 	IdleConnections   int
 	TotalConnections  int
-	MaxOpen          int
-	MaxIdle          int
+	MaxOpen           int
+	MaxIdle           int
 }
 
 // GetPoolStats returns current pool statistics
@@ -164,9 +210,7 @@ func (p *Pool) GetPoolStats() PoolStats {
 		ActiveConnections: stats.InUse,
 		IdleConnections:   stats.Idle,
 		TotalConnections:  stats.OpenConnections,
-		MaxOpen:          stats.MaxOpenConnections,
-		MaxIdle:          int(stats.MaxIdleClosed),
+		MaxOpen:           stats.MaxOpenConnections,
+		MaxIdle:           int(stats.MaxIdleClosed),
 	}
 }
-
-
